@@ -340,7 +340,8 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         grouped = df.groupby("State", as_index=False)[candidate_cols].sum()
 
         grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
-        grouped["Winning_Party"] = grouped["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map))
+        grouped["Winning_Party"] = grouped["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map, year))
+
         grouped["Year"] = year
 
         out = grouped[["State", "Year", "Winning_Party"]].copy()
