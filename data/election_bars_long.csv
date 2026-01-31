@@ -1,1 +1,256 @@
 State,Year,Voter_Percentage,Winning_Party
+Alabama,2008,60.94,Other
+Alabama,2012,58.88,Other
+Alabama,2016,59.12,Other
+Alabama,2020,61.46,Other
+Alabama,2024,58.93,Other
+Alaska,2008,68.25,Other
+Alaska,2012,58.89,Other
+Alaska,2016,61.56,Other
+Alaska,2020,68.23,Other
+Alaska,2024,63.78,Other
+Arizona,2008,57.35,Other
+Arizona,2012,52.91,Other
+Arizona,2016,55.97,Other
+Arizona,2020,66.63,Other
+Arizona,2024,63.6,Other
+Arkansas,2008,52.91,Other
+Arkansas,2012,51.07,Other
+Arkansas,2016,53.11,Other
+Arkansas,2020,56.17,Other
+Arkansas,2024,53.48,Other
+California,2008,61.71,Other
+California,2012,55.85,Other
+California,2016,58.31,Other
+California,2020,68.83,Other
+California,2024,62.06,Other
+Colorado,2008,71.6,Other
+Colorado,2012,70.63,Other
+Colorado,2016,71.99,Other
+Colorado,2020,76.69,Other
+Colorado,2024,73.14,Other
+Connecticut,2008,,Other
+Connecticut,2012,61.3,Other
+Connecticut,2016,64.73,Other
+Connecticut,2020,70.09,Other
+Connecticut,2024,67.08,Other
+Delaware,2008,65.8,Other
+Delaware,2012,63.07,Other
+Delaware,2016,64.51,Other
+Delaware,2020,68.34,Other
+Delaware,2024,67.02,Other
+District of Columbia,2008,61.73,Other
+District of Columbia,2012,61.36,Other
+District of Columbia,2016,60.36,Other
+District of Columbia,2020,68.87,Other
+District of Columbia,2024,63.57,Other
+Florida,2008,66.65,Other
+Florida,2012,63.32,Other
+Florida,2016,65.72,Other
+Florida,2020,70.79,Other
+Florida,2024,66.71,Other
+Georgia,2008,62.7,Other
+Georgia,2012,59.44,Other
+Georgia,2016,59.85,Other
+Georgia,2020,67.06,Other
+Georgia,2024,68.26,Other
+Hawaii,2008,49.06,Other
+Hawaii,2012,44.36,Other
+Hawaii,2016,43.19,Other
+Hawaii,2020,55.35,Other
+Hawaii,2024,50.27,Other
+Idaho,2008,64.85,Other
+Idaho,2012,61.13,Other
+Idaho,2016,60.76,Other
+Idaho,2020,64.94,Other
+Idaho,2024,63.44,Other
+Illinois,2008,64.22,Other
+Illinois,2012,59.23,Other
+Illinois,2016,62.92,Other
+Illinois,2020,66.52,Other
+Illinois,2024,63.25,Other
+Indiana,2008,60.3,Other
+Indiana,2012,56.04,Other
+Indiana,2016,57.77,Other
+Indiana,2020,61.06,Other
+Indiana,2024,58.69,Other
+Iowa,2008,69.63,Other
+Iowa,2012,70.6,Other
+Iowa,2016,69.18,Other
+Iowa,2020,72.04,Other
+Iowa,2024,70.78,Other
+Kansas,2008,63.44,Other
+Kansas,2012,58.25,Other
+Kansas,2016,59.54,Other
+Kansas,2020,65.1,Other
+Kansas,2024,63.18,Other
+Kentucky,2008,58.96,Other
+Kentucky,2012,56.13,Other
+Kentucky,2016,59.56,Other
+Kentucky,2020,64.41,Other
+Kentucky,2024,62.19,Other
+Louisiana,2008,61.78,Other
+Louisiana,2012,60.86,Other
+Louisiana,2016,60.67,Other
+Louisiana,2020,64.14,Other
+Louisiana,2024,60.77,Other
+Maine,2008,71.85,Other
+Maine,2012,69.38,Other
+Maine,2016,72.84,Other
+Maine,2020,74.87,Other
+Maine,2024,74.24,Other
+Maryland,2008,67.8,Other
+Maryland,2012,67.3,Other
+Maryland,2016,67.12,Other
+Maryland,2020,69.45,Other
+Maryland,2024,69.3,Other
+Massachusetts,2008,67.29,Other
+Massachusetts,2012,66.0,Other
+Massachusetts,2016,68.12,Other
+Massachusetts,2020,71.31,Other
+Massachusetts,2024,68.03,Other
+Michigan,2008,69.68,Other
+Michigan,2012,65.25,Other
+Michigan,2016,65.54,Other
+Michigan,2020,73.27,Other
+Michigan,2024,74.64,Other
+Minnesota,2008,78.09,Other
+Minnesota,2012,76.5,Other
+Minnesota,2016,74.67,Other
+Minnesota,2020,79.21,Other
+Minnesota,2024,76.35,Other
+Mississippi,2008,,Other
+Mississippi,2012,59.34,Other
+Mississippi,2016,55.17,Other
+Mississippi,2020,60.63,Other
+Mississippi,2024,57.45,Other
+Missouri,2008,68.21,Other
+Missouri,2012,64.11,Other
+Missouri,2016,62.25,Other
+Missouri,2020,65.49,Other
+Missouri,2024,64.34,Other
+Montana,2008,67.06,Other
+Montana,2012,63.64,Other
+Montana,2016,64.42,Other
+Montana,2020,,Other
+Montana,2024,68.2,Other
+Nebraska,2008,63.66,Other
+Nebraska,2012,61.15,Other
+Nebraska,2016,64.11,Other
+Nebraska,2020,69.06,Other
+Nebraska,2024,67.96,Other
+Nevada,2008,57.17,Other
+Nevada,2012,56.62,Other
+Nevada,2016,57.75,Other
+Nevada,2020,64.25,Other
+Nevada,2024,65.8,Other
+New Hampshire,2008,72.51,Other
+New Hampshire,2012,70.74,Other
+New Hampshire,2016,72.07,Other
+New Hampshire,2020,73.96,Other
+New Hampshire,2024,74.05,Other
+New Jersey,2008,67.71,Other
+New Jersey,2012,62.41,Other
+New Jersey,2016,66.38,Other
+New Jersey,2020,72.04,Other
+New Jersey,2024,67.24,Other
+New Mexico,2008,61.18,Other
+New Mexico,2012,54.66,Other
+New Mexico,2016,54.58,Other
+New Mexico,2020,60.49,Other
+New Mexico,2024,59.57,Other
+New York,2008,59.65,Other
+New York,2012,53.51,Other
+New York,2016,57.57,Other
+New York,2020,61.71,Other
+New York,2024,60.44,Other
+North Carolina,2008,66.16,Other
+North Carolina,2012,65.34,Other
+North Carolina,2016,64.72,Other
+North Carolina,2020,71.0,Other
+North Carolina,2024,70.32,Other
+North Dakota,2008,63.63,Other
+North Dakota,2012,60.52,Other
+North Dakota,2016,61.9,Other
+North Dakota,2020,63.07,Other
+North Dakota,2024,63.1,Other
+Ohio,2008,67.82,Other
+Ohio,2012,65.13,Other
+Ohio,2016,64.02,Other
+Ohio,2020,67.08,Other
+Ohio,2024,65.39,Other
+Oklahoma,2008,56.33,Other
+Oklahoma,2012,49.47,Other
+Oklahoma,2016,52.63,Other
+Oklahoma,2020,54.43,Other
+Oklahoma,2024,53.28,Other
+Oregon,2008,68.32,Other
+Oregon,2012,64.28,Other
+Oregon,2016,68.2,Other
+Oregon,2020,75.33,Other
+Oregon,2024,71.94,Other
+Pennsylvania,2008,64.18,Other
+Pennsylvania,2012,59.9,Other
+Pennsylvania,2016,64.21,Other
+Pennsylvania,2020,,Other
+Pennsylvania,2024,71.43,Other
+Rhode Island,2008,62.23,Other
+Rhode Island,2012,58.49,Other
+Rhode Island,2016,59.78,Other
+Rhode Island,2020,63.09,Other
+Rhode Island,2024,63.28,Other
+South Carolina,2008,58.23,Other
+South Carolina,2012,56.91,Other
+South Carolina,2016,57.3,Other
+South Carolina,2020,64.71,Other
+South Carolina,2024,62.14,Other
+South Dakota,2008,65.6,Other
+South Dakota,2012,60.19,Other
+South Dakota,2016,60.3,Other
+South Dakota,2020,65.62,Other
+South Dakota,2024,64.0,Other
+Tennessee,2008,57.39,Other
+Tennessee,2012,52.36,Other
+Tennessee,2016,51.87,Other
+Tennessee,2020,59.24,Other
+Tennessee,2024,57.61,Other
+Texas,2008,,Other
+Texas,2012,49.57,Other
+Texas,2016,51.34,Other
+Texas,2020,59.79,Other
+Texas,2024,56.57,Other
+Utah,2008,57.09,Other
+Utah,2012,56.17,Other
+Utah,2016,58.03,Other
+Utah,2020,67.22,Other
+Utah,2024,64.15,Other
+Vermont,2008,67.7,Other
+Vermont,2012,61.24,Other
+Vermont,2016,64.77,Other
+Vermont,2020,71.25,Other
+Vermont,2024,70.89,Other
+Virginia,2008,67.53,Other
+Virginia,2012,66.72,Other
+Virginia,2016,66.27,Other
+Virginia,2020,71.79,Other
+Virginia,2024,71.19,Other
+Washington,2008,67.36,Other
+Washington,2012,65.83,Other
+Washington,2016,65.65,Other
+Washington,2020,75.33,Other
+Washington,2024,70.17,Other
+West Virginia,2008,51.16,Other
+West Virginia,2012,47.35,Other
+West Virginia,2016,51.42,Other
+West Virginia,2020,57.19,Other
+West Virginia,2024,55.46,Other
+Wisconsin,2008,72.74,Other
+Wisconsin,2012,73.37,Other
+Wisconsin,2016,69.92,Other
+Wisconsin,2020,75.04,Other
+Wisconsin,2024,76.64,Other
+Wyoming,2008,63.1,Other
+Wyoming,2012,59.03,Other
+Wyoming,2016,60.23,Other
+Wyoming,2020,64.74,Other
+Wyoming,2024,61.28,Other
