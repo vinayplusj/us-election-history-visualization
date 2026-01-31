@@ -549,7 +549,16 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
 
         party_map = extract_party_map_from_nara_html(html)
 
-        tables = pd.read_html(StringIO(html))
+        # 2024 uses a two-row header (For President / candidate name). Read it as a MultiIndex header.
+        try:
+            if year == 2024:
+                tables = pd.read_html(StringIO(html), header=[0, 1])
+            else:
+                tables = pd.read_html(StringIO(html))
+        except ValueError:
+            # Fallback: try the default behaviour if header parsing fails
+            tables = pd.read_html(StringIO(html))
+
         if not tables:
             raise ValueError(f"No HTML tables found on NARA page for {year}.")
 
@@ -603,7 +612,8 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
         has_for_pres = any(c == "for president" or c.startswith("for president") for c in cols_l)
         has_for_vp = any(c in {"for vice-president", "for vice president"} or c.startswith("for vice") for c in cols_l)
 
-        if has_for_pres and has_for_vp:
+        if year != 2024 and has_for_pres and has_for_vp:
+
             # Find the paired ticket columns
             pres_a = None
             vp_a = None
@@ -695,6 +705,13 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
         if not candidate_cols:
             # If we get here, it means the table structure changed and needs inspection.
             raise ValueError(f"{year}: Could not identify candidate columns. Columns: {list(df.columns)}")
+        
+        # 2024: force winner selection to use "For President <candidate>" columns when available
+        if year == 2024:
+            pres_only = [c for c in df.columns if str(c).strip().lower().startswith("for president ")]
+            pres_only = [c for c in pres_only if df[c].apply(clean_int_cell).sum() > 0]
+            if len(pres_only) >= 2:
+                candidate_cols = pres_only
 
         for c in candidate_cols:
             df[c] = df[c].apply(clean_int_cell)
