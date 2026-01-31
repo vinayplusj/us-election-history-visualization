@@ -161,6 +161,47 @@ def normalise_turnout_state_name(s: str) -> str:
 
     return s2
 
+def promote_first_row_candidates_2024(df: pd.DataFrame, state_col: str) -> pd.DataFrame:
+    """
+    NARA 2024 can render candidate names as the first data row under columns like
+    'For President' / 'For President.1'. If so, promote that first row into the header.
+    This makes columns like 'For President Kamala D. Harris' and 'For President Donald J. Trump'.
+    """
+    if df.empty:
+        return df
+
+    first_idx = df.index[0]
+
+    # Look for evidence that the first row contains candidate names.
+    row_text = " ".join([str(v) for v in df.loc[first_idx].tolist()]).lower()
+    looks_like_2024_candidates = ("trump" in row_text) or ("harris" in row_text) or ("walz" in row_text) or ("vance" in row_text)
+    if not looks_like_2024_candidates:
+        return df
+
+    new_cols: list[str] = []
+    for c in df.columns:
+        if c == state_col:
+            new_cols.append(str(c).strip())
+            continue
+
+        base = str(c).strip()
+        cand = str(df.loc[first_idx, c]).strip()
+
+        # Only use it if it looks like a name (letters) and not a number.
+        if re.search(r"[A-Za-z]", cand) and not re.search(r"\d", cand):
+            new_cols.append(f"{base} {cand}".strip())
+        else:
+            new_cols.append(base)
+
+    df2 = df.copy()
+    df2.columns = new_cols
+
+    # Drop the promoted row
+    df2 = df2.iloc[1:].copy()
+    df2 = df2.reset_index(drop=True)
+
+    return df2
+
 def find_col_ci(df: pd.DataFrame, want: str) -> str | None:
     want_l = want.strip().lower()
     for c in df.columns:
@@ -596,6 +637,10 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
 
         df = target.copy()
         state_col = find_state_col(df)
+
+        if year == 2024:
+            df = promote_first_row_candidates_2024(df, state_col=state_col)
+
 
         df[state_col] = df[state_col].astype(str).str.strip()
         df["State_Group"] = df[state_col].apply(canonical_state_group)
