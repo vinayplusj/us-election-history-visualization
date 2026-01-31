@@ -1,256 +1,256 @@
-State,Year,Voter_Percentage,Winning_Party
-Alabama,2008,60.94,Republican
-Alabama,2012,58.88,Republican
-Alabama,2016,59.12,Republican
-Alabama,2020,61.46,Republican
-Alabama,2024,58.93,Other
-Alaska,2008,68.25,Republican
-Alaska,2012,58.89,Republican
-Alaska,2016,61.56,Republican
-Alaska,2020,68.23,Republican
-Alaska,2024,63.78,Other
-Arizona,2008,57.35,Republican
-Arizona,2012,52.91,Republican
-Arizona,2016,55.97,Republican
-Arizona,2020,66.63,Democratic
-Arizona,2024,63.6,Other
-Arkansas,2008,52.91,Republican
-Arkansas,2012,51.07,Republican
-Arkansas,2016,53.11,Republican
-Arkansas,2020,56.17,Republican
-Arkansas,2024,53.48,Other
-California,2008,61.71,Democratic
-California,2012,55.85,Democratic
-California,2016,58.31,Republican
-California,2020,68.83,Democratic
-California,2024,62.06,Other
-Colorado,2008,71.6,Democratic
-Colorado,2012,70.63,Democratic
-Colorado,2016,71.99,Republican
-Colorado,2020,76.69,Democratic
-Colorado,2024,73.14,Other
-Connecticut,2008,,Democratic
-Connecticut,2012,61.3,Democratic
-Connecticut,2016,64.73,Republican
-Connecticut,2020,70.09,Democratic
-Connecticut,2024,67.08,Other
-Delaware,2008,65.8,Democratic
-Delaware,2012,63.07,Democratic
-Delaware,2016,64.51,Republican
-Delaware,2020,68.34,Democratic
-Delaware,2024,67.02,Other
-District of Columbia,2008,61.73,Democratic
-District of Columbia,2012,61.36,Democratic
-District of Columbia,2016,60.36,Republican
-District of Columbia,2020,68.87,Democratic
-District of Columbia,2024,63.57,Other
-Florida,2008,66.65,Democratic
-Florida,2012,63.32,Democratic
-Florida,2016,65.72,Republican
-Florida,2020,70.79,Republican
-Florida,2024,66.71,Other
-Georgia,2008,62.7,Republican
-Georgia,2012,59.44,Republican
-Georgia,2016,59.85,Republican
-Georgia,2020,67.06,Democratic
-Georgia,2024,68.26,Other
-Hawaii,2008,49.06,Democratic
-Hawaii,2012,44.36,Democratic
-Hawaii,2016,43.19,Republican
-Hawaii,2020,55.35,Democratic
-Hawaii,2024,50.27,Other
-Idaho,2008,64.85,Republican
-Idaho,2012,61.13,Republican
-Idaho,2016,60.76,Republican
-Idaho,2020,64.94,Republican
-Idaho,2024,63.44,Other
-Illinois,2008,64.22,Democratic
-Illinois,2012,59.23,Democratic
-Illinois,2016,62.92,Republican
-Illinois,2020,66.52,Democratic
-Illinois,2024,63.25,Other
-Indiana,2008,60.3,Democratic
-Indiana,2012,56.04,Republican
-Indiana,2016,57.77,Republican
-Indiana,2020,61.06,Republican
-Indiana,2024,58.69,Other
-Iowa,2008,69.63,Democratic
-Iowa,2012,70.6,Democratic
-Iowa,2016,69.18,Republican
-Iowa,2020,72.04,Republican
-Iowa,2024,70.78,Other
-Kansas,2008,63.44,Republican
-Kansas,2012,58.25,Republican
-Kansas,2016,59.54,Republican
-Kansas,2020,65.1,Republican
-Kansas,2024,63.18,Other
-Kentucky,2008,58.96,Republican
-Kentucky,2012,56.13,Republican
-Kentucky,2016,59.56,Republican
-Kentucky,2020,64.41,Republican
-Kentucky,2024,62.19,Other
-Louisiana,2008,61.78,Republican
-Louisiana,2012,60.86,Republican
-Louisiana,2016,60.67,Republican
-Louisiana,2020,64.14,Republican
-Louisiana,2024,60.77,Other
-Maine,2008,71.85,Democratic
-Maine,2012,69.38,Democratic
-Maine,2016,72.84,Republican
-Maine,2020,74.87,Democratic
-Maine,2024,74.24,Other
-Maryland,2008,67.8,Democratic
-Maryland,2012,67.3,Democratic
-Maryland,2016,67.12,Republican
-Maryland,2020,69.45,Democratic
-Maryland,2024,69.3,Other
-Massachusetts,2008,67.29,Democratic
-Massachusetts,2012,66.0,Democratic
-Massachusetts,2016,68.12,Republican
-Massachusetts,2020,71.31,Democratic
-Massachusetts,2024,68.03,Other
-Michigan,2008,69.68,Democratic
-Michigan,2012,65.25,Democratic
-Michigan,2016,65.54,Republican
-Michigan,2020,73.27,Democratic
-Michigan,2024,74.64,Other
-Minnesota,2008,78.09,Democratic
-Minnesota,2012,76.5,Democratic
-Minnesota,2016,74.67,Republican
-Minnesota,2020,79.21,Democratic
-Minnesota,2024,76.35,Other
-Mississippi,2008,,Republican
-Mississippi,2012,59.34,Republican
-Mississippi,2016,55.17,Republican
-Mississippi,2020,60.63,Republican
-Mississippi,2024,57.45,Other
-Missouri,2008,68.21,Republican
-Missouri,2012,64.11,Republican
-Missouri,2016,62.25,Republican
-Missouri,2020,65.49,Republican
-Missouri,2024,64.34,Other
-Montana,2008,67.06,Republican
-Montana,2012,63.64,Republican
-Montana,2016,64.42,Republican
-Montana,2020,,Republican
-Montana,2024,68.2,Other
-Nebraska,2008,63.66,Republican
-Nebraska,2012,61.15,Republican
-Nebraska,2016,64.11,Republican
-Nebraska,2020,69.06,Republican
-Nebraska,2024,67.96,Other
-Nevada,2008,57.17,Democratic
-Nevada,2012,56.62,Democratic
-Nevada,2016,57.75,Republican
-Nevada,2020,64.25,Democratic
-Nevada,2024,65.8,Other
-New Hampshire,2008,72.51,Democratic
-New Hampshire,2012,70.74,Democratic
-New Hampshire,2016,72.07,Republican
-New Hampshire,2020,73.96,Democratic
-New Hampshire,2024,74.05,Other
-New Jersey,2008,67.71,Democratic
-New Jersey,2012,62.41,Democratic
-New Jersey,2016,66.38,Republican
-New Jersey,2020,72.04,Democratic
-New Jersey,2024,67.24,Other
-New Mexico,2008,61.18,Democratic
-New Mexico,2012,54.66,Democratic
-New Mexico,2016,54.58,Republican
-New Mexico,2020,60.49,Democratic
-New Mexico,2024,59.57,Other
-New York,2008,59.65,Democratic
-New York,2012,53.51,Democratic
-New York,2016,57.57,Republican
-New York,2020,61.71,Democratic
-New York,2024,60.44,Other
-North Carolina,2008,66.16,Democratic
-North Carolina,2012,65.34,Republican
-North Carolina,2016,64.72,Republican
-North Carolina,2020,71.0,Republican
-North Carolina,2024,70.32,Other
-North Dakota,2008,63.63,Republican
-North Dakota,2012,60.52,Republican
-North Dakota,2016,61.9,Republican
-North Dakota,2020,63.07,Republican
-North Dakota,2024,63.1,Other
-Ohio,2008,67.82,Democratic
-Ohio,2012,65.13,Democratic
-Ohio,2016,64.02,Republican
-Ohio,2020,67.08,Republican
-Ohio,2024,65.39,Other
-Oklahoma,2008,56.33,Republican
-Oklahoma,2012,49.47,Republican
-Oklahoma,2016,52.63,Republican
-Oklahoma,2020,54.43,Republican
-Oklahoma,2024,53.28,Other
-Oregon,2008,68.32,Democratic
-Oregon,2012,64.28,Democratic
-Oregon,2016,68.2,Republican
-Oregon,2020,75.33,Democratic
-Oregon,2024,71.94,Other
-Pennsylvania,2008,64.18,Democratic
-Pennsylvania,2012,59.9,Democratic
-Pennsylvania,2016,64.21,Republican
-Pennsylvania,2020,,Democratic
-Pennsylvania,2024,71.43,Other
-Rhode Island,2008,62.23,Democratic
-Rhode Island,2012,58.49,Democratic
-Rhode Island,2016,59.78,Republican
-Rhode Island,2020,63.09,Democratic
-Rhode Island,2024,63.28,Other
-South Carolina,2008,58.23,Republican
-South Carolina,2012,56.91,Republican
-South Carolina,2016,57.3,Republican
-South Carolina,2020,64.71,Republican
-South Carolina,2024,62.14,Other
-South Dakota,2008,65.6,Republican
-South Dakota,2012,60.19,Republican
-South Dakota,2016,60.3,Republican
-South Dakota,2020,65.62,Republican
-South Dakota,2024,64.0,Other
-Tennessee,2008,57.39,Republican
-Tennessee,2012,52.36,Republican
-Tennessee,2016,51.87,Republican
-Tennessee,2020,59.24,Republican
-Tennessee,2024,57.61,Other
-Texas,2008,,Republican
-Texas,2012,49.57,Republican
-Texas,2016,51.34,Republican
-Texas,2020,59.79,Republican
-Texas,2024,56.57,Other
-Utah,2008,57.09,Republican
-Utah,2012,56.17,Republican
-Utah,2016,58.03,Republican
-Utah,2020,67.22,Republican
-Utah,2024,64.15,Other
-Vermont,2008,67.7,Democratic
-Vermont,2012,61.24,Democratic
-Vermont,2016,64.77,Republican
-Vermont,2020,71.25,Democratic
-Vermont,2024,70.89,Other
-Virginia,2008,67.53,Democratic
-Virginia,2012,66.72,Democratic
-Virginia,2016,66.27,Republican
-Virginia,2020,71.79,Democratic
-Virginia,2024,71.19,Other
-Washington,2008,67.36,Democratic
-Washington,2012,65.83,Democratic
-Washington,2016,65.65,Republican
-Washington,2020,75.33,Democratic
-Washington,2024,70.17,Other
-West Virginia,2008,51.16,Republican
-West Virginia,2012,47.35,Republican
-West Virginia,2016,51.42,Republican
-West Virginia,2020,57.19,Republican
-West Virginia,2024,55.46,Other
-Wisconsin,2008,72.74,Democratic
-Wisconsin,2012,73.37,Democratic
-Wisconsin,2016,69.92,Republican
-Wisconsin,2020,75.04,Democratic
-Wisconsin,2024,76.64,Other
-Wyoming,2008,63.1,Republican
-Wyoming,2012,59.03,Republican
-Wyoming,2016,60.23,Republican
-Wyoming,2020,64.74,Republican
-Wyoming,2024,61.28,Other
+State,Year,Voter_Percentage,Ballots_Counted,VEP_Pop,Winning_Party
+Alabama,2008,60.94,2105622.0,3455447.0,Republican
+Alabama,2012,58.88,2083309.0,3538042.0,Republican
+Alabama,2016,59.12,2134061.0,3609696.0,Republican
+Alabama,2020,61.46,2325000.0,3782861.0,Republican
+Alabama,2024,58.93,,,Other
+Alaska,2008,68.25,327341.0,479628.0,Republican
+Alaska,2012,58.89,301694.0,512270.0,Republican
+Alaska,2016,61.56,321271.0,521888.0,Republican
+Alaska,2020,68.23,361400.0,529649.0,Republican
+Alaska,2024,63.78,,,Other
+Arizona,2008,57.35,2320851.0,4047095.0,Republican
+Arizona,2012,52.91,2323579.0,4391282.0,Republican
+Arizona,2016,55.97,2661497.0,4755584.0,Republican
+Arizona,2020,66.63,3420585.0,5133804.0,Democratic
+Arizona,2024,63.6,,,Other
+Arkansas,2008,52.91,1095958.0,2071520.0,Republican
+Arkansas,2012,51.07,1078548.0,2111810.0,Republican
+Arkansas,2016,53.11,1137772.0,2142344.0,Republican
+Arkansas,2020,56.17,1223675.0,2178328.0,Republican
+Arkansas,2024,53.48,,,Other
+California,2008,61.71,13743177.0,22270461.0,Democratic
+California,2012,55.85,13202158.0,23638949.0,Democratic
+California,2016,58.31,14610509.0,25058420.0,Republican
+California,2020,68.83,17785151.0,25840035.0,Democratic
+California,2024,62.06,,,Other
+Colorado,2008,71.6,2422236.0,3383138.0,Democratic
+Colorado,2012,70.63,2596173.0,3675695.0,Democratic
+Colorado,2016,71.99,2859216.0,3971805.0,Republican
+Colorado,2020,76.69,3295666.0,4297225.0,Democratic
+Colorado,2024,73.14,,,Other
+Connecticut,2008,,,2472389.0,Democratic
+Connecticut,2012,61.3,1560640.0,2546075.0,Democratic
+Connecticut,2016,64.73,1675955.0,2589090.0,Republican
+Connecticut,2020,70.09,1861086.0,2655214.0,Democratic
+Connecticut,2024,67.08,,,Other
+Delaware,2008,65.8,413562.0,628468.0,Democratic
+Delaware,2012,63.07,417631.0,662162.0,Democratic
+Delaware,2016,64.51,445228.0,690153.0,Republican
+Delaware,2020,68.34,509241.0,745131.0,Democratic
+Delaware,2024,67.02,,,Other
+District of Columbia,2008,61.73,266871.0,432328.0,Democratic
+District of Columbia,2012,61.36,294254.0,479566.0,Democratic
+District of Columbia,2016,60.36,312575.0,517863.0,Republican
+District of Columbia,2020,68.87,346491.0,503118.0,Democratic
+District of Columbia,2024,63.57,,,Other
+Florida,2008,66.65,8453743.0,12683359.0,Democratic
+Florida,2012,63.32,8538264.0,13484046.0,Democratic
+Florida,2016,65.72,9580489.0,14577798.0,Republican
+Florida,2020,70.79,11144855.0,15742624.0,Republican
+Florida,2024,66.71,,,Other
+Georgia,2008,62.7,3940705.0,6285008.0,Republican
+Georgia,2012,59.44,3919355.0,6593817.0,Republican
+Georgia,2016,59.85,4165405.0,6960129.0,Republican
+Georgia,2020,67.06,5023159.0,7490838.0,Democratic
+Georgia,2024,68.26,,,Other
+Hawaii,2008,49.06,456064.0,929632.0,Democratic
+Hawaii,2012,44.36,437159.0,985494.0,Democratic
+Hawaii,2016,43.19,437664.0,1013299.0,Republican
+Hawaii,2020,55.35,579784.0,1047466.0,Democratic
+Hawaii,2024,50.27,,,Other
+Idaho,2008,64.85,667506.0,1029341.0,Republican
+Idaho,2012,61.13,666290.0,1089963.0,Republican
+Idaho,2016,60.76,710545.0,1169396.0,Republican
+Idaho,2020,64.94,878527.0,1352914.0,Republican
+Idaho,2024,63.44,,,Other
+Illinois,2008,64.22,5578195.0,8685582.0,Democratic
+Illinois,2012,59.23,5279752.0,8913874.0,Democratic
+Illinois,2016,62.92,5666118.0,9005114.0,Republican
+Illinois,2020,66.52,6050000.0,9095238.0,Democratic
+Illinois,2024,63.25,,,Other
+Indiana,2008,60.3,2805986.0,4653122.0,Democratic
+Indiana,2012,56.04,2663368.0,4752712.0,Republican
+Indiana,2016,57.77,2807676.0,4860062.0,Republican
+Indiana,2020,61.06,3068542.0,5025421.0,Republican
+Indiana,2024,58.69,,,Other
+Iowa,2008,69.63,1543662.0,2216929.0,Democratic
+Iowa,2012,70.6,1589951.0,2251922.0,Democratic
+Iowa,2016,69.18,1581371.0,2285860.0,Republican
+Iowa,2020,72.04,1700130.0,2360125.0,Republican
+Iowa,2024,70.78,,,Other
+Kansas,2008,63.44,1264208.0,1992730.0,Republican
+Kansas,2012,58.25,1182771.0,2030640.0,Republican
+Kansas,2016,59.54,1225667.0,2058729.0,Republican
+Kansas,2020,65.1,1375125.0,2112458.0,Republican
+Kansas,2024,63.18,,,Other
+Kentucky,2008,58.96,1858578.0,3152147.0,Republican
+Kentucky,2012,56.13,1815843.0,3235034.0,Republican
+Kentucky,2016,59.56,1955195.0,3282543.0,Republican
+Kentucky,2020,64.41,2150954.0,3339511.0,Republican
+Kentucky,2024,62.19,,,Other
+Louisiana,2008,61.78,1979852.0,3204721.0,Republican
+Louisiana,2012,60.86,2014548.0,3310167.0,Republican
+Louisiana,2016,60.67,2049531.0,3378229.0,Republican
+Louisiana,2020,64.14,2169401.0,3382286.0,Republican
+Louisiana,2024,60.77,,,Other
+Maine,2008,71.85,744456.0,1036168.0,Democratic
+Maine,2012,69.38,724758.0,1044606.0,Democratic
+Maine,2016,72.84,771892.0,1059772.0,Republican
+Maine,2020,74.87,828305.0,1106276.0,Democratic
+Maine,2024,74.24,,,Other
+Maryland,2008,67.8,2661905.0,3925994.0,Democratic
+Maryland,2012,67.3,2734062.0,4062401.0,Democratic
+Maryland,2016,67.12,2807322.0,4182300.0,Republican
+Maryland,2020,69.45,3066945.0,4416326.0,Democratic
+Maryland,2024,69.3,,,Other
+Massachusetts,2008,67.29,3102995.0,4611636.0,Democratic
+Massachusetts,2012,66.0,3184196.0,4824485.0,Democratic
+Massachusetts,2016,68.12,3378801.0,4959742.0,Republican
+Massachusetts,2020,71.31,3658005.0,5129755.0,Democratic
+Massachusetts,2024,68.03,,,Other
+Michigan,2008,69.68,5039080.0,7231283.0,Democratic
+Michigan,2012,65.25,4780701.0,7327148.0,Democratic
+Michigan,2016,65.54,4874619.0,7437567.0,Republican
+Michigan,2020,73.27,5579317.0,7615249.0,Democratic
+Michigan,2024,74.64,,,Other
+Minnesota,2008,78.09,2921147.0,3740671.0,Democratic
+Minnesota,2012,76.5,2950780.0,3857424.0,Democratic
+Minnesota,2016,74.67,2968281.0,3975066.0,Republican
+Minnesota,2020,79.21,3292997.0,4157411.0,Democratic
+Minnesota,2024,76.35,,,Other
+Mississippi,2008,,,2113435.0,Republican
+Mississippi,2012,59.34,1285584.0,2166636.0,Republican
+Mississippi,2016,55.17,1209357.0,2192233.0,Republican
+Mississippi,2020,60.63,1325000.0,2185433.0,Republican
+Mississippi,2024,57.45,,,Other
+Missouri,2008,68.21,2950504.0,4325788.0,Republican
+Missouri,2012,64.11,2840776.0,4430901.0,Republican
+Missouri,2016,62.25,2811549.0,4516733.0,Republican
+Missouri,2020,65.49,3026028.0,4620290.0,Republican
+Missouri,2024,64.34,,,Other
+Montana,2008,67.06,497599.0,742019.0,Republican
+Montana,2012,63.64,491966.0,773031.0,Republican
+Montana,2016,64.42,516901.0,802436.0,Republican
+Montana,2020,,,,Republican
+Montana,2024,68.2,,,Other
+Nebraska,2008,63.66,811923.0,1275336.0,Republican
+Nebraska,2012,61.15,804245.0,1315193.0,Republican
+Nebraska,2016,64.11,860573.0,1342336.0,Republican
+Nebraska,2020,69.06,966920.0,1400069.0,Republican
+Nebraska,2024,67.96,,,Other
+Nevada,2008,57.17,970019.0,1696872.0,Democratic
+Nevada,2012,56.62,1016664.0,1795581.0,Democratic
+Nevada,2016,57.75,1125429.0,1948712.0,Republican
+Nevada,2020,64.25,1407754.0,2191188.0,Democratic
+Nevada,2024,65.8,,,Other
+New Hampshire,2008,72.51,719643.0,992519.0,Democratic
+New Hampshire,2012,70.74,718700.0,1016041.0,Democratic
+New Hampshire,2016,72.07,755850.0,1048757.0,Republican
+New Hampshire,2020,73.96,814499.0,1101294.0,Democratic
+New Hampshire,2024,74.05,,,Other
+New Jersey,2008,67.71,3910220.0,5774838.0,Democratic
+New Jersey,2012,62.41,3683638.0,5902545.0,Democratic
+New Jersey,2016,66.38,3957303.0,5961240.0,Republican
+New Jersey,2020,72.04,4635585.0,6435019.0,Democratic
+New Jersey,2024,67.24,,,Other
+New Mexico,2008,61.18,833365.0,1362140.0,Democratic
+New Mexico,2012,54.66,786522.0,1438878.0,Democratic
+New Mexico,2016,54.58,804043.0,1473243.0,Republican
+New Mexico,2020,60.49,928230.0,1534600.0,Democratic
+New Mexico,2024,59.57,,,Other
+New York,2008,59.65,7721718.0,12945767.0,Democratic
+New York,2012,53.51,7128852.0,13321457.0,Democratic
+New York,2016,57.57,7786881.0,13525950.0,Republican
+New York,2020,61.71,8690139.0,14081957.0,Democratic
+New York,2024,60.44,,,Other
+North Carolina,2008,66.16,4354571.0,6581783.0,Democratic
+North Carolina,2012,65.34,4542488.0,6952078.0,Republican
+North Carolina,2016,64.72,4769640.0,7370213.0,Republican
+North Carolina,2020,71.0,5545848.0,7811002.0,Republican
+North Carolina,2024,70.32,,,Other
+North Dakota,2008,63.63,321133.0,504650.0,Republican
+North Dakota,2012,60.52,325564.0,537941.0,Republican
+North Dakota,2016,61.9,349945.0,565295.0,Republican
+North Dakota,2020,63.07,364251.0,577567.0,Republican
+North Dakota,2024,63.1,,,Other
+Ohio,2008,67.82,5773777.0,8513103.0,Democratic
+Ohio,2012,65.13,5632423.0,8648493.0,Democratic
+Ohio,2016,64.02,5607641.0,8759758.0,Republican
+Ohio,2020,67.08,5974121.0,8906277.0,Republican
+Ohio,2024,65.39,,,Other
+Oklahoma,2008,56.33,1474694.0,2618039.0,Republican
+Oklahoma,2012,49.47,1343380.0,2715732.0,Republican
+Oklahoma,2016,52.63,1465505.0,2784673.0,Republican
+Oklahoma,2020,54.43,1565000.0,2875494.0,Republican
+Oklahoma,2024,53.28,,,Other
+Oregon,2008,68.32,1845251.0,2700858.0,Democratic
+Oregon,2012,64.28,1820507.0,2832164.0,Democratic
+Oregon,2016,68.2,2056310.0,3015007.0,Republican
+Oregon,2020,75.33,2413890.0,3204224.0,Democratic
+Oregon,2024,71.94,,,Other
+Pennsylvania,2008,64.18,6071357.0,9460225.0,Democratic
+Pennsylvania,2012,59.9,5783621.0,9656146.0,Democratic
+Pennsylvania,2016,64.21,6223150.0,9692322.0,Republican
+Pennsylvania,2020,,,,Democratic
+Pennsylvania,2024,71.43,,,Other
+Rhode Island,2008,62.23,475428.0,763936.0,Democratic
+Rhode Island,2012,58.49,451593.0,772057.0,Democratic
+Rhode Island,2016,59.78,469589.0,785544.0,Republican
+Rhode Island,2020,63.09,522488.0,828194.0,Democratic
+Rhode Island,2024,63.28,,,Other
+South Carolina,2008,58.23,1927153.0,3309462.0,Republican
+South Carolina,2012,56.91,1981516.0,3481760.0,Republican
+South Carolina,2016,57.3,2123584.0,3705927.0,Republican
+South Carolina,2020,64.71,2533010.0,3914642.0,Republican
+South Carolina,2024,62.14,,,Other
+South Dakota,2008,65.6,387449.0,590607.0,Republican
+South Dakota,2012,60.19,368270.0,611872.0,Republican
+South Dakota,2016,60.3,378995.0,628468.0,Republican
+South Dakota,2020,65.62,427529.0,651554.0,Republican
+South Dakota,2024,64.0,,,Other
+Tennessee,2008,57.39,2618238.0,4562424.0,Republican
+Tennessee,2012,52.36,2479733.0,4735888.0,Republican
+Tennessee,2016,51.87,2545271.0,4906550.0,Republican
+Tennessee,2020,59.24,3065000.0,5174225.0,Republican
+Tennessee,2024,57.61,,,Other
+Texas,2008,,,14921530.0,Republican
+Texas,2012,49.57,7993851.0,16127383.0,Republican
+Texas,2016,51.34,8975000.0,17482785.0,Republican
+Texas,2020,59.79,11350000.0,18982171.0,Republican
+Texas,2024,56.57,,,Other
+Utah,2008,57.09,971185.0,1701049.0,Republican
+Utah,2012,56.17,1028786.0,1831602.0,Republican
+Utah,2016,58.03,1152369.0,1985869.0,Republican
+Utah,2020,67.22,1515845.0,2255175.0,Republican
+Utah,2024,64.15,,,Other
+Vermont,2008,67.7,326822.0,482758.0,Democratic
+Vermont,2012,61.24,301793.0,492820.0,Democratic
+Vermont,2016,64.77,320467.0,494758.0,Republican
+Vermont,2020,71.25,370968.0,520641.0,Democratic
+Vermont,2024,70.89,,,Other
+Virginia,2008,67.53,3753059.0,5557344.0,Democratic
+Virginia,2012,66.72,3888186.0,5828032.0,Democratic
+Virginia,2016,66.27,3996302.0,6030589.0,Republican
+Virginia,2020,71.79,4523142.0,6300717.0,Democratic
+Virginia,2024,71.19,,,Other
+Washington,2008,67.36,3071587.0,4560012.0,Democratic
+Washington,2012,65.83,3172939.0,4820193.0,Democratic
+Washington,2016,65.65,3363440.0,5123557.0,Republican
+Washington,2020,75.33,4116894.0,5465496.0,Democratic
+Washington,2024,70.17,,,Other
+West Virginia,2008,51.16,731691.0,1430218.0,Republican
+West Virginia,2012,47.35,685099.0,1446756.0,Republican
+West Virginia,2016,51.42,732362.0,1424155.0,Republican
+West Virginia,2020,57.19,802726.0,1403699.0,Republican
+West Virginia,2024,55.46,,,Other
+Wisconsin,2008,72.74,2997086.0,4120029.0,Democratic
+Wisconsin,2012,73.37,3084115.0,4203731.0,Democratic
+Wisconsin,2016,69.92,2993000.0,4280628.0,Republican
+Wisconsin,2020,75.04,3310000.0,4410780.0,Democratic
+Wisconsin,2024,76.64,,,Other
+Wyoming,2008,63.1,256035.0,405766.0,Republican
+Wyoming,2012,59.03,250701.0,424733.0,Republican
+Wyoming,2016,60.23,258788.0,429694.0,Republican
+Wyoming,2020,64.74,278503.0,430161.0,Republican
+Wyoming,2024,61.28,,,Other
