@@ -136,6 +136,26 @@ def clip_pct(x: float | None) -> float | None:
         return 100.0
     return v
 
+def normalise_turnout_state_name(s: str) -> str:
+    """
+    UF turnout files sometimes include footnote markers like '*'
+    (for example, 'Montana*', 'Pennsylvania*'). Strip those safely.
+    """
+    s2 = str(s or "").strip()
+
+    # Normalise DC variants first
+    if s2.upper() in {"DC", "D.C.", "DISTRICT OF COLUMBIA"}:
+        return "District of Columbia"
+
+    # Remove common footnote markers and trailing junk
+    # Example: 'Montana*' -> 'Montana'
+    s2 = re.sub(r"[\*\u2020\u2021]+", "", s2)  # *, †, ‡
+    s2 = re.sub(r"\s+", " ", s2).strip()
+
+    # Remove any remaining trailing non-letters (very conservative)
+    s2 = re.sub(r"[^A-Za-z .]+$", "", s2).strip()
+
+    return s2
 
 def find_col_ci(df: pd.DataFrame, want: str) -> str | None:
     want_l = want.strip().lower()
@@ -210,8 +230,7 @@ def load_turnout_vep(force_refresh: bool = False) -> pd.DataFrame:
     out1 = out1.dropna(subset=["Year"]).copy()
     out1["Year"] = out1["Year"].astype(int)
 
-    out1["State"] = out1["State"].astype(str).str.strip()
-    out1.loc[out1["State"].str.upper().isin(["DC", "D.C.", "DISTRICT OF COLUMBIA"]), "State"] = "District of Columbia"
+    out1["State"] = out1["State"].astype(str).apply(normalise_turnout_state_name)
 
     # Numeric coercion (commas, blanks)
     out1["VEP"] = out1["VEP"].apply(coerce_number)
@@ -273,8 +292,7 @@ def load_turnout_vep(force_refresh: bool = False) -> pd.DataFrame:
     out = out[out["Year"].isin(YEARS)].copy()
 
     # Normalise DC naming
-    out["State"] = out["State"].astype(str).str.strip()
-    out.loc[out["State"].str.upper().isin(["DC", "D.C.", "DISTRICT OF COLUMBIA"]), "State"] = "District of Columbia"
+    out["State"] = out["State"].astype(str).apply(normalise_turnout_state_name)
 
     # Filter to the canonical 51
     out = out[out["State"].isin(JURISDICTIONS_51)].copy()
