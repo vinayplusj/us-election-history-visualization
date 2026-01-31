@@ -115,7 +115,12 @@ def load_turnout_vep() -> pd.DataFrame:
 
     out = df[[col_state, col_year, col_vep]].copy()
     out.columns = ["State", "Year", "Voter_Percentage"]
+    
+    # Coerce non-numeric years to NaN, then drop them
+    out["Year"] = pd.to_numeric(out["Year"], errors="coerce").astype("Int64")
+    out = out.dropna(subset=["Year"]).copy()
     out["Year"] = out["Year"].astype(int)
+
 
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
 
