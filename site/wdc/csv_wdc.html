@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CSV WDC</title>
+  <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
+</head>
+<body>
+  <h3>CSV Web Data Connector</h3>
+  <p>Paste your raw CSV URL and click Connect.</p>
+
+  <input id="csvUrl" style="width: 90%;" placeholder="https://raw.githubusercontent.com/.../data/election_bars_long.csv">
+  <button id="connectBtn">Connect</button>
+
+  <script>
+    const connector = tableau.makeConnector();
+
+    connector.getSchema = function(schemaCallback) {
+      const cols = [
+        { id: "State", dataType: tableau.dataTypeEnum.string },
+        { id: "Year", dataType: tableau.dataTypeEnum.int },
+        { id: "Voter_Percentage", dataType: tableau.dataTypeEnum.float },
+        { id: "Winning_Party", dataType: tableau.dataTypeEnum.string }
+      ];
+
+      const tableSchema = {
+        id: "election_bars_long",
+        alias: "Election Bars Long",
+        columns: cols
+      };
+
+      schemaCallback([tableSchema]);
+    };
+
+    connector.getData = async function(table, doneCallback) {
+      const url = tableau.connectionData;
+      const response = await fetch(url);
+      const text = await response.text();
+
+      const lines = text.trim().split("\n");
+      const header = lines[0].split(",");
+      const idx = {
+        State: header.indexOf("State"),
+        Year: header.indexOf("Year"),
+        Voter_Percentage: header.indexOf("Voter_Percentage"),
+        Winning_Party: header.indexOf("Winning_Party")
+      };
+
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(",");
+        rows.push({
+          State: parts[idx.State],
+          Year: parseInt(parts[idx.Year], 10),
+          Voter_Percentage: parseFloat(parts[idx.Voter_Percentage]),
+          Winning_Party: parts[idx.Winning_Party]
+        });
+      }
+
+      table.appendRows(rows);
+      doneCallback();
+    };
+
+    tableau.registerConnector(connector);
+
+    document.getElementById("connectBtn").addEventListener("click", function() {
+      const url = document.getElementById("csvUrl").value.trim();
+      tableau.connectionName = "Election Bars Long CSV";
+      tableau.connectionData = url;
+      tableau.submit();
+    });
+  </script>
+</body>
+</html>
