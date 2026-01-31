@@ -523,7 +523,7 @@ def identify_candidate_columns(df: pd.DataFrame, state_col: str) -> list[str]:
       - excluding obvious non-candidate metadata columns
     """
     exclude_tokens = [
-        "total", "electoral", "electors", "votes total", "district", "at large",
+        "total", "votes total", "district", "at large",
         "popular", "percent", "percentage", "margin",
     ]
 
@@ -690,21 +690,8 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
 
             # Determine ticket parties using extracted party_map when possible, else year hints
             def ticket_party(ticket_label: str) -> str:
-                # Ticket A corresponds to "President" ticket on NARA pages, Ticket B to "Main Opponent"
-                if party_map:
-                    # If party_map has entries, use them to infer ticket parties
-                    # We try to find any "President ..." and "Main Opponent ..." entries in the raw map.
-                    president_party = None
-                    opponent_party = None
-                    for name, p in party_map.items():
-                        # name is candidate name; p is party letter
-                        # We do not rely on label text here, only on presence of (D)/(R) in map keys.
-                        # The map is built from page text and header patterns.
-                        # This still works because page-level candidates are associated with parties.
-                        pass  # no-op: we will use year hints below when headers are not usable
-
                 # Practical and stable fallback:
-                # Use year hints by candidate surname tokens (these are in your requirements).
+                # Use year hints by candidate surname tokens
                 if ticket_label == "Ticket_A_Total":
                     # President ticket (overall winner) name is not in table headers, so use year hint tokens.
                     # For 2024, you explicitly want correct parties; the year hint mapping covers Trump/Harris.
@@ -827,7 +814,7 @@ def main() -> None:
     # Fill missing winners as Other so Tableau still renders, but validate 2024 is not all Other.
     final["Winning_Party"] = final["Winning_Party"].fillna("Other")
 
-    # Hard validation requirements
+    # Hard validation
     if len(final) != 255:
         raise ValueError(f"Expected exactly 255 rows (51 * 5), got {len(final)}.")
 
@@ -869,7 +856,8 @@ def main() -> None:
         raise ValueError(
             "2024 Winning_Party still has 'Other' rows. Sample:\n"
             + other_2024[["State", "Winning_Party"]].head(10).to_string(index=False)
-    )
+        )
+
 
 
 
