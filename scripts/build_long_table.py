@@ -35,8 +35,12 @@ FALLBACK_YEAR_PARTY_HINTS = {
     2012: {"Democratic": ["Obama"], "Republican": ["Romney"]},
     2016: {"Democratic": ["Clinton"], "Republican": ["Trump"]},
     2020: {"Democratic": ["Biden"], "Republican": ["Trump"]},
-    2024: {"Democratic": ["Harris", "Democratic"], "Republican": ["Trump", "Republican"]},
+    2024: {
+        "Democratic": ["Harris", "Walz", "Democratic"],
+        "Republican": ["Trump", "Vance", "Republican"],
+    },
 }
+
 
 # Turnout sources (VEP turnout by state)
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
@@ -697,9 +701,15 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
 
         grouped = df.groupby("State_Group", as_index=False)[candidate_cols].sum()
 
-        grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
+        # Prefer "For President" columns when the table has both President and Vice-President candidates
+        pres_cols = [c for c in candidate_cols if str(c).strip().lower().startswith("for president")]
+        winner_cols = pres_cols if len(pres_cols) >= 2 else candidate_cols
+        
+        grouped["Winner_Label"] = grouped[winner_cols].idxmax(axis=1)
         grouped["Winning_Party"] = grouped["Winner_Label"].apply(
             lambda x: party_from_candidate_label(str(x), party_map, year)
+        )
+
         )
 
         grouped["State"] = grouped["State_Group"]
@@ -794,6 +804,13 @@ def main() -> None:
     print(f"Wrote {len(final):,} rows to {OUT_PATH}")
     print("2024 Winning_Party distribution:")
     print(final[final["Year"] == 2024]["Winning_Party"].value_counts().to_string())
+    other_2024 = final[(final["Year"] == 2024) & (final["Winning_Party"] == "Other")]
+    if not other_2024.empty:
+        raise ValueError(
+            "2024 Winning_Party still has 'Other' rows. Sample:\n"
+            + other_2024[["State", "Winning_Party"]].head(10).to_string(index=False)
+    )
+
 
 
 if __name__ == "__main__":
