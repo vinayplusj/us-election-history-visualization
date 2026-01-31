@@ -5,7 +5,6 @@ from io import StringIO
 from pathlib import Path
 
 import pandas as pd
-import requests
 
 
 YEARS = [2008, 2012, 2016, 2020, 2024]
@@ -14,14 +13,6 @@ YEARS = [2008, 2012, 2016, 2020, 2024]
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
 TURNOUT_URL_2024 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.3.csv"
 
-# Winners by state sources (Wikipedia results tables)
-WIKI_URLS = {
-    2008: "https://en.wikipedia.org/wiki/2008_United_States_presidential_election",
-    2012: "https://en.wikipedia.org/wiki/2012_United_States_presidential_election",
-    2016: "https://en.wikipedia.org/wiki/2016_United_States_presidential_election",
-    2020: "https://en.wikipedia.org/wiki/2020_United_States_presidential_election",
-    2024: "https://en.wikipedia.org/wiki/2024_United_States_presidential_election",
-}
 
 OUT_PATH = Path("data/election_bars_long.csv")
 
@@ -29,11 +20,11 @@ CACHE_DIR = Path("sources_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def fetch_text(url: str, cache_path: Path) -> str:
+def fetch_text(url: str, cache_path: Path, force_refresh: bool = False) -> str:
     """
     Download a URL and cache it locally (committing cache is optional).
     """
-    if cache_path.exists():
+    if cache_path.exists() and not force_refresh:
         return cache_path.read_text(encoding="utf-8")
 
     headers = {"User-Agent": "us-election-history-tableau (GitHub Actions)"}
@@ -45,7 +36,7 @@ def fetch_text(url: str, cache_path: Path) -> str:
 
 
 def parse_percent(value) -> float | None:
-    """
+    """    
     Convert values like '61.46%' or 61.46 into a float.
     Returns None if it cannot parse.
     """
@@ -135,139 +126,231 @@ def load_turnout_vep() -> pd.DataFrame:
     out = out.drop_duplicates(subset=["State", "Year"])
 
     return out
+    
+# Winners by state sources (National Archives Electoral College pages)
+NARA_URLS = {
+    2008: "https://www.archives.gov/electoral-college/2008",
+    2012: "https://www.archives.gov/electoral-college/2012",
+    2016: "https://www.archives.gov/electoral-college/2016",
+    2020: "https://www.archives.gov/electoral-college/2020",
+    2024: "https://www.archives.gov/electoral-college/2024",
+}
 
 
-def flatten_columns(cols) -> list[str]:
-    if isinstance(cols, pd.MultiIndex):
-        flat = []
-        for tup in cols:
-            parts = [str(x).strip() for x in tup if str(x).strip() and str(x).strip().lower() != "nan"]
-            flat.append(" ".join(parts).strip())
-        return flat
-    return [str(c).strip() for c in cols]
+def flatten_columns_df(df: pd.DataFrame) -> pd.DataFrame:
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [
+            " ".join([str(x).strip() for x in tup if str(x).strip() and str(x).strip().lower() != "nan"]).strip()
+            for tup in df.columns
+        ]
+    else:
+        df.columns = [str(c).strip() for c in df.columns]
+    return df
 
 
-def infer_party_from_col(colname: str) -> str:
-    s = colname.lower()
-    # Common parties that can appear in Wikipedia state tables
-    if "democratic" in s:
-        return "Democratic"
-    if "republican" in s:
-        return "Republican"
-    if "libertarian" in s:
-        return "Libertarian"
-    if "green" in s:
-        return "Green"
-    if "constitution" in s:
-        return "Constitution"
-    if "independent" in s:
-        return "Independent"
+def clean_int_cell(x) -> int:
+    if pd.isna(x):
+        return 0
+    s = str(x).strip()
+    s = s.replace(",", "")
+    s = re.sub(r"\[[^\]]*\]", "", s)   # remove [1] style notes
+    s = re.sub(r"\([^)]*\)", "", s)    # remove (note) style text
+    s = s.strip()
+    if s in {"", "-", "—"}:
+        return 0
+    try:
+        return int(float(s))
+    except ValueError:
+        return 0
+
+
+def normalise_state_name(s: str) -> str:
+    s2 = re.sub(r"[^A-Za-z .]", "", str(s)).strip()
+    if s2.upper() in {"DC", "D.C.", "DISTRICT OF COLUMBIA"}:
+        return "District of Columbia"
+    return s2
+
+
+def extract_party_map_from_nara_html(html: str) -> dict[str, str]:
+    """
+    Tries to map candidate names to party letters, based on patterns like:
+    President John Doe [D]
+    Main Opponent Jane Roe [R]
+    """
+    party_map: dict[str, str] = {}
+
+    for m in re.finditer(r"(President|Main Opponent)\s+([^<\[]+?)\s*\[([A-Z])\]", html):
+        name = m.group(2).strip()
+        party = m.group(3).strip()
+        party_map[name] = party
+
+    return party_map
+
+FALLBACK_YEAR_PARTY_HINTS = {
+    2008: {"Democratic": ["Obama"], "Republican": ["McCain"]},
+    2012: {"Democratic": ["Obama"], "Republican": ["Romney"]},
+    2016: {"Democratic": ["Clinton"], "Republican": ["Trump"]},
+    2020: {"Democratic": ["Biden"], "Republican": ["Trump"]},
+    2024: {"Democratic": ["Harris", "Democratic"], "Republican": ["Trump", "Republican"]},
+}
+
+def party_from_candidate_label(label: str, party_map: dict[str, str], year: int) -> str:
+    if not label:
+        return "Other"
+
+    label_l = label.lower()
+
+    # First try party_map extracted from page
+    for name, party in party_map.items():
+        if name.lower() in label_l:
+            if party == "D":
+                return "Democratic"
+            if party == "R":
+                return "Republican"
+            return "Other"
+
+    # Fallback: year-based hints
+    hints = FALLBACK_YEAR_PARTY_HINTS.get(year, {})
+    for party_name, tokens in hints.items():
+        for token in tokens:
+            if token.lower() in label_l:
+                return party_name
+
     return "Other"
 
 
-def load_state_winners_from_wikipedia() -> pd.DataFrame:
+
+def load_state_winners_from_nara() -> pd.DataFrame:
     """
     Returns columns: State, Year, Winning_Party
+
+    Notes:
+    - For Maine and Nebraska, the NARA table can show split electoral votes.
+      This method assigns the winner as the candidate with the most electoral votes in that state.
     """
-    rows = []
+    rows: list[dict[str, object]] = []
 
     for year in YEARS:
-        url = WIKI_URLS[year]
-        html = fetch_text(url, CACHE_DIR / f"wiki_{year}.html")
+        url = NARA_URLS[year]
 
-        # read_html needs lxml/html5lib/bs4 in the environment (we install those in Actions).
+        # Use requests so we can set User-Agent and also reuse your caching pattern
+        html = fetch_text(url, CACHE_DIR / f"nara_{year}.html")
+
+        party_map = extract_party_map_from_nara_html(html)
+
+        # Read tables from HTML
         tables = pd.read_html(StringIO(html))
+        if not tables:
+            raise ValueError(f"No HTML tables found on NARA page for {year}.")
 
-        # Choose the table that looks like "Results by state"
+        # Find the most likely table: has a State column and includes Alabama somewhere
         target = None
+        best_score = -1
+
         for t in tables:
-            cols = [str(c).lower() for c in flatten_columns(t.columns)]
-            if any("state" == c.strip() for c in cols) and any("electoral" in c for c in cols):
+            t = flatten_columns_df(t.copy())
+            cols = [str(c).strip().lower() for c in t.columns]
+
+            score = 0
+            if "state" in cols:
+                score += 10
+            # Look for common signal words
+            if any("electoral" in c for c in cols):
+                score += 2
+
+            # Look for Alabama in the body as a strong signal
+            body_text = " ".join(t.astype(str).fillna("").values.flatten().tolist())
+            if "Alabama" in body_text:
+                score += 5
+
+            # Prefer wider tables (usually candidate columns)
+            score += min(len(cols), 20) * 0.1
+
+            if score > best_score:
+                best_score = score
                 target = t
-                break
 
         if target is None:
-            raise ValueError(f"Could not find a 'Results by state' table on Wikipedia for {year}.")
+            raise ValueError(f"Could not identify the Electoral College by-state table for {year}.")
 
-        target.columns = flatten_columns(target.columns)
-
-        # Identify State column
-        state_col = None
-        for c in target.columns:
-            if str(c).strip().lower() == "state":
-                state_col = c
-                break
-        if state_col is None:
-            # Sometimes it is "State Total" or similar, but typically "State" exists.
-            raise ValueError(f"Could not locate State column in {year} table.")
+        # Identify state column
+        cols_lower = {str(c).strip().lower(): c for c in target.columns}
+        state_col = cols_lower.get("state", target.columns[0])
 
         df = target.copy()
         df[state_col] = df[state_col].astype(str).str.strip()
+        df["State"] = df[state_col].apply(normalise_state_name)
 
-        # Keep 50 states + DC, and remove header/footnote rows
-        df = df[~df[state_col].str.contains("total", case=False, na=False)]
-        df = df[df[state_col].str.len() > 1]
+        # Drop totals / empty rows
+        df = df[df["State"].str.len() > 0]
+        df = df[~df["State"].str.lower().isin(["total"])]
 
-        # Find percent columns. Wikipedia tables include many "%", one per candidate.
-        percent_cols = [c for c in df.columns if "%" in str(c)]
-        if not percent_cols:
-            raise ValueError(f"No percent columns detected in Wikipedia state table for {year}.")
+        # Candidate columns: numeric-looking columns except the state column
+        candidate_cols: list[str] = []
+        for c in df.columns:
+            c_l = str(c).strip().lower()
+            if c == state_col or c_l == "state":
+                continue
+        
+            # Exclude obvious non-candidate columns
+            if any(k in c_l for k in ["total", "electoral", "votes", "vote", "electors", "district", "at large"]):
+                continue
+        
+            sample = df[c].head(20).astype(str)
+            hits = sample.str.contains(r"^\s*[\d,]+(\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
+            if hits >= 0.5:
+                candidate_cols.append(c)
 
-        # Build a party score per row using the percent columns
-        party_scores = {}
-        for c in percent_cols:
-            party = infer_party_from_col(str(c))
-            party_scores.setdefault(party, []).append(c)
 
-        def winning_party(row) -> str:
-            best_party = "Other"
-            best_val = -1.0
+        if not candidate_cols:
+            raise ValueError(f"Could not identify candidate columns for {year}. Columns: {list(df.columns)}")
 
-            for party, cols in party_scores.items():
-                # A party may have multiple % columns in the table (rare), take max.
-                vals = []
-                for pc in cols:
-                    v = parse_percent(row.get(pc))
-                    if v is not None:
-                        vals.append(v)
-                if not vals:
-                    continue
-                m = max(vals)
-                if m > best_val:
-                    best_val = m
-                    best_party = party
+        # Convert candidate columns to ints
+        for c in candidate_cols:
+            df[c] = df[c].apply(clean_int_cell)
 
-            return best_party
+        # Winner label is the candidate column with the maximum EV in that row
+        df["Winner_Label"] = df[candidate_cols].idxmax(axis=1)
 
-        df["Winning_Party"] = df.apply(winning_party, axis=1)
+        # Map candidate label to party
+        df["Winning_Party"] = df["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map, year))    
+        # Add year and export
+        df["Year"] = year
 
-        # Normalise DC naming
-        df.loc[df[state_col].str.upper().isin(["DC", "D.C.", "DISTRICT OF COLUMBIA"]), state_col] = "District of Columbia"
+        out = df[["State", "Year", "Winning_Party"]].copy()
 
-        for _, r in df.iterrows():
-            rows.append(
-                {"State": r[state_col], "Year": year, "Winning_Party": r["Winning_Party"]}
-            )
+        # NARA pages sometimes include territories in some formats; you can filter if needed.
+        out = out.drop_duplicates(subset=["State", "Year"])
 
-    out = pd.DataFrame(rows).drop_duplicates(subset=["State", "Year"])
-    return out
+        for _, r in out.iterrows():
+            rows.append({"State": r["State"], "Year": int(r["Year"]), "Winning_Party": r["Winning_Party"]})
+
+    return pd.DataFrame(rows).drop_duplicates(subset=["State", "Year"])
+    
 
 
 def main() -> None:
     turnout = load_turnout_vep()
-    winners = load_state_winners_from_wikipedia()
+    winners = load_state_winners_from_nara()
 
     final = turnout.merge(winners, on=["State", "Year"], how="left")
+    expected_years = set(YEARS)
+    counts = final.groupby("Year")["State"].nunique()
+    
+    bad_years = {y: int(counts.get(y, 0)) for y in expected_years if int(counts.get(y, 0)) != 51}
+    if bad_years:
+        raise ValueError(f"Expected 51 jurisdictions (50 states + DC). Got: {bad_years}")
 
-    # Safety: if a winner is missing, label as Other (still colours in Tableau)
+
+    # If a winner is missing, label as Other so Tableau still renders
     final["Winning_Party"] = final["Winning_Party"].fillna("Other")
 
-    # Output long format for Tableau
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     final = final.sort_values(["State", "Year"])
     final.to_csv(OUT_PATH, index=False)
 
     print(f"Wrote {len(final):,} rows to {OUT_PATH}")
+
 
 
 if __name__ == "__main__":
