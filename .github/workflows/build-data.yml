@@ -22,17 +22,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas requests lxml html5lib beautifulsoup4
 
-
       - name: Build data
-        env:
-          RESULTS_URL_2008_2020: ${{ secrets.RESULTS_URL_2008_2020 }}
-          TURNOUT_URL_2008: ${{ secrets.TURNOUT_URL_2008 }}
-          TURNOUT_URL_2012: ${{ secrets.TURNOUT_URL_2012 }}
-          TURNOUT_URL_2016: ${{ secrets.TURNOUT_URL_2016 }}
-          TURNOUT_URL_2020: ${{ secrets.TURNOUT_URL_2020 }}
-          TURNOUT_URL_2024: ${{ secrets.TURNOUT_URL_2024 }}
         run: |
-          python scripts/build_long_table.py
+          python -u scripts/build_long_table.py
 
       - name: Commit CSV if changed
         run: |
