@@ -710,8 +710,6 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
             lambda x: party_from_candidate_label(str(x), party_map, year)
         )
 
-        )
-
         grouped["State"] = grouped["State_Group"]
         grouped["Year"] = year
 
