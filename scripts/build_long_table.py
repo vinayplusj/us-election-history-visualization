@@ -30,6 +30,14 @@ NARA_URLS = {
     2024: "https://www.archives.gov/electoral-college/2024",
 }
 
+FALLBACK_YEAR_PARTY_HINTS = {
+    2008: {"Democratic": ["Obama"], "Republican": ["McCain"]},
+    2012: {"Democratic": ["Obama"], "Republican": ["Romney"]},
+    2016: {"Democratic": ["Clinton"], "Republican": ["Trump"]},
+    2020: {"Democratic": ["Biden"], "Republican": ["Trump"]},
+    2024: {"Democratic": ["Harris", "Democratic"], "Republican": ["Trump", "Republican"]},
+}
+
 # Turnout sources (VEP turnout by state)
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
 TURNOUT_URL_2024 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.3.csv"
@@ -80,6 +88,15 @@ def parse_percent(value) -> float | None:
     except ValueError:
         return None
 
+def choose_candidate_columns_by_total(df: pd.DataFrame, candidate_cols: list[str]) -> list[str]:
+    """
+    Keep only columns that actually carry electoral votes.
+    This drops junk numeric columns and keeps real candidate columns.
+    """
+    totals = df[candidate_cols].sum(numeric_only=True).sort_values(ascending=False)
+    # Keep only columns with some EV
+    keep = [c for c in totals.index.tolist() if totals[c] > 0]
+    return keep
 
 def load_turnout_vep() -> pd.DataFrame:
     """
@@ -148,6 +165,11 @@ def load_turnout_vep() -> pd.DataFrame:
 
     # Parse percent values
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
+
+    # If values look like proportions (0 to 1), convert to percent (0 to 100)
+    mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
+    out.loc[mask, "Voter_Percentage"] = out.loc[mask, "Voter_Percentage"] * 100.0
+
 
     # If values look like proportions (0-1), convert to percent
     mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
@@ -221,13 +243,6 @@ def extract_party_map_from_nara_html(html: str) -> dict[str, str]:
 
     return party_map
 
-FALLBACK_YEAR_PARTY_HINTS = {
-    2008: {"Democratic": ["Obama"], "Republican": ["McCain"]},
-    2012: {"Democratic": ["Obama"], "Republican": ["Romney"]},
-    2016: {"Democratic": ["Clinton"], "Republican": ["Trump"]},
-    2020: {"Democratic": ["Biden"], "Republican": ["Trump"]},
-    2024: {"Democratic": ["Harris", "Democratic"], "Republican": ["Trump", "Republican"]},
-}
 
 def party_from_candidate_label(label: str, party_map: dict[str, str], year: int) -> str:
     if not label:
@@ -343,6 +358,15 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         # Convert candidate columns to ints
         for c in candidate_cols:
             df[c] = df[c].apply(clean_int_cell)
+        
+        # Keep only real candidate columns (columns that receive EV totals)
+        candidate_cols = choose_candidate_columns_by_total(df, candidate_cols)
+        if not candidate_cols:
+            raise ValueError(f"No candidate columns with EV totals detected for {year}.")     
+
+        print(f"{year} candidate columns kept: {candidate_cols}")
+        print(f"{year} candidate EV totals:\n{df[candidate_cols].sum().sort_values(ascending=False).to_string()}")
+
 
         # Collapse district rows (Maine / Nebraska) by summing candidate EV within each State
         # This prevents counts like 52 and ensures one record per jurisdiction.
@@ -380,10 +404,20 @@ def main() -> None:
         .merge(turnout, on=["State", "Year"], how="left")
         .merge(winners, on=["State", "Year"], how="left")
     )
+
+    missing_turnout = final[final["Voter_Percentage"].isna()][["Year", "State"]]
+    if not missing_turnout.empty:
+        print("Missing turnout for these State-Year rows:")
+        print(missing_turnout.sort_values(["Year", "State"]).to_string(index=False))
+
     
     # If a winner is missing, label as Other so Tableau still renders
+    missing_winners = final[final["Winning_Party"].isna()][["Year", "State"]]
+    if not missing_winners.empty:
+        print("Missing winners for these State-Year rows:")
+        print(missing_winners.sort_values(["Year", "State"]).to_string(index=False))
+    
     final["Winning_Party"] = final["Winning_Party"].fillna("Other")
-
     
     expected_years = set(YEARS)
     counts = final.groupby("Year")["State"].nunique()
