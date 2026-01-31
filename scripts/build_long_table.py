@@ -1,26 +1,26 @@
 from __future__ import annotations
 
+import os
 import re
 from io import StringIO
 from pathlib import Path
 
 import pandas as pd
-
 import requests
+from bs4 import BeautifulSoup
 
 YEARS = [2008, 2012, 2016, 2020, 2024]
 
 JURISDICTIONS_51 = {
-    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware",
-    "Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana",
-    "Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana",
-    "Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina",
-    "North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina",
-    "South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
-    "Wisconsin","Wyoming","District of Columbia"
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
+    "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
+    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+    "Wisconsin", "Wyoming", "District of Columbia",
 }
 
-    
 # Winners by state sources (National Archives Electoral College pages)
 NARA_URLS = {
     2008: "https://www.archives.gov/electoral-college/2008",
@@ -42,18 +42,27 @@ FALLBACK_YEAR_PARTY_HINTS = {
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
 TURNOUT_URL_2024 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.3.csv"
 
-
 OUT_PATH = Path("data/election_bars_long.csv")
 
 CACHE_DIR = Path("sources_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+JURISDICTIONS_51_LC = {s.lower(): s for s in JURISDICTIONS_51}
+
+
+def env_flag(name: str, default: bool = False) -> bool:
+    v = os.environ.get(name, "")
+    if not v:
+        return default
+    return v.strip().lower() in {"1", "true", "yes", "y", "on"}
+
 
 def make_base_grid() -> pd.DataFrame:
     return pd.MultiIndex.from_product(
         [sorted(JURISDICTIONS_51), YEARS],
-        names=["State", "Year"]
+        names=["State", "Year"],
     ).to_frame(index=False)
+
 
 def fetch_text(url: str, cache_path: Path, force_refresh: bool = False) -> str:
     """
@@ -71,8 +80,8 @@ def fetch_text(url: str, cache_path: Path, force_refresh: bool = False) -> str:
 
 
 def parse_percent(value) -> float | None:
-    """    
-    Convert values like '61.46%' or 61.46 into a float.
+    """
+    Convert values like '61.46%' or 61.46 into a float (percent).
     Returns None if it cannot parse.
     """
     if pd.isna(value):
@@ -83,18 +92,12 @@ def parse_percent(value) -> float | None:
     s = s.replace(",", "")
     if s.endswith("%"):
         s = s[:-1].strip()
+    if s in {"", "-", "—"}:
+        return None
     try:
         return float(s)
     except ValueError:
         return None
-
-def find_first_col(df: pd.DataFrame, include_all: list[str]) -> str | None:
-    cols = []
-    for c in df.columns:
-        name = str(c).strip().lower()
-        if all(tok in name for tok in include_all):
-            cols.append(c)
-    return cols[0] if cols else None
 
 
 def coerce_number(x) -> float | None:
@@ -111,140 +114,134 @@ def coerce_number(x) -> float | None:
     except ValueError:
         return None
 
-def last_name_token(full_name: str) -> str:
-    s = re.sub(r"[^A-Za-z ]", " ", str(full_name)).strip()
-    parts = [p for p in s.split() if p]
-    return parts[-1] if parts else ""
-    
-def choose_candidate_columns_by_total(df: pd.DataFrame, candidate_cols: list[str]) -> list[str]:
-    """
-    Keep only columns that actually carry electoral votes.
-    This drops junk numeric columns and keeps real candidate columns.
-    """
-    totals = df[candidate_cols].sum(numeric_only=True).sort_values(ascending=False)
-    # Keep only columns with some EV
-    keep = [c for c in totals.index.tolist() if totals[c] > 0]
-    return keep
 
-def find_vep_population_col(df: pd.DataFrame) -> str | None:
-    for c in df.columns:
-        name = str(c).strip().lower()
-        if "vep" in name and "turnout" not in name and any(k in name for k in ["pop", "population", "estimate", "total"]):
-            return c
-    # fallback: exact common names
-    for c in df.columns:
-        if str(c).strip().lower() in {"vep"}:
-            return c
-    return None
+def safe_pct_from_ratio(num: float | None, den: float | None) -> float | None:
+    if num is None or den is None:
+        return None
+    if den <= 0:
+        return None
+    return 100.0 * (num / den)
 
 
-def find_ballots_col(df: pd.DataFrame) -> str | None:
+def clip_pct(x: float | None) -> float | None:
+    if x is None or pd.isna(x):
+        return None
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    if v < 0:
+        return 0.0
+    if v > 100:
+        return 100.0
+    return v
+
+
+def find_col_ci(df: pd.DataFrame, want: str) -> str | None:
+    want_l = want.strip().lower()
     for c in df.columns:
-        name = str(c).strip().lower()
-        if "ballots" in name and ("counted" in name or "cast" in name) and "turnout" not in name:
-            return c
-    # looser fallback
-    for c in df.columns:
-        name = str(c).strip().lower()
-        if "ballots" in name and "turnout" not in name:
+        if str(c).strip().lower() == want_l:
             return c
     return None
 
 
-def load_turnout_vep() -> pd.DataFrame:
+def load_turnout_vep(force_refresh: bool = False) -> pd.DataFrame:
     """
     Returns columns: State, Year, Voter_Percentage
     Where Voter_Percentage is VEP turnout percent (0-100).
+    Priority for 1980–2022 file (exactly as requested):
+      1) 100 * (VOTE_FOR_HIGHEST_OFFICE / VEP)
+      2) else VEP_TURNOUT_RATE
+      3) else 100 * (TOTAL_BALLOTS_COUNTED / VEP)
     """
-
-    # Download both turnout files
-    t1 = fetch_text(TURNOUT_URL_1980_2022, CACHE_DIR / "Turnout_1980_2022_v1.2.csv", force_refresh=True)
-    t2 = fetch_text(TURNOUT_URL_2024, CACHE_DIR / "Turnout_2024G_v0.3.csv", force_refresh=True)
+    t1 = fetch_text(
+        TURNOUT_URL_1980_2022,
+        CACHE_DIR / "Turnout_1980_2022_v1.2.csv",
+        force_refresh=force_refresh,
+    )
+    t2 = fetch_text(
+        TURNOUT_URL_2024,
+        CACHE_DIR / "Turnout_2024G_v0.3.csv",
+        force_refresh=force_refresh,
+    )
 
     df1 = pd.read_csv(StringIO(t1))
     df2 = pd.read_csv(StringIO(t2))
 
-    # Standardise df1 (1980–2022)
-    # Find year/state/vep turnout columns case-insensitively
-    def find_col(df: pd.DataFrame, want: str) -> str:
-        for c in df.columns:
-            if str(c).strip().lower() == want:
-                return c
-        raise ValueError(f"Could not find column '{want}' in turnout file.")
+    # ---- 1980–2022 (UF) ----
+    year1 = find_col_ci(df1, "year")
+    state1 = find_col_ci(df1, "state")
+    vote_hi_col = find_col_ci(df1, "vote_for_highest_office")
+    ballots_col = find_col_ci(df1, "total_ballots_counted")
+    vep_pop_col = find_col_ci(df1, "vep")
+    vep_rate_col = find_col_ci(df1, "vep_turnout_rate")
 
-    year1 = find_col(df1, "year")
-    state1 = find_col(df1, "state")
+    missing = [k for k, v in {
+        "year": year1,
+        "state": state1,
+        "vep": vep_pop_col,
+        "vep_turnout_rate": vep_rate_col,
+    }.items() if v is None]
+    if missing:
+        raise ValueError(f"Missing required columns in 1980–2022 file: {missing}")
 
-    vep1_candidates = []
-    for c in df1.columns:
-        name = str(c).strip().lower()
-        if "vep" in name and "turnout" in name:
-            vep1_candidates.append(c)
-    if not vep1_candidates:
-        raise ValueError("Could not find VEP turnout column in 1980–2022 turnout file.")
-    vep1 = vep1_candidates[0]
-    
-    # Try to find numerator and denominator columns for a computed VEP turnout:
-    # numerator: ballots counted
-    # denominator: VEP (eligible population)
-    ballots_col = find_ballots_col(df1)
-    vep_pop_col = find_vep_population_col(df1)
-    
-    # Common patterns for VEP population columns
-    if vep_pop_col is None:
-        # fallback: any column containing "vep" but NOT "turnout"
-        for c in df1.columns:
-            name = str(c).strip().lower()
-            if "vep" in name and "turnout" not in name:
-                vep_pop_col = c
-                break
-    
-    # If not found by exact match, try a looser match
-    if vep_pop_col is None:
-        vep_pop_col = find_first_col(df1, ["vep"])
-    
-    use_cols = [state1, year1, vep1]
+    use_cols = [state1, year1, vep_pop_col, vep_rate_col]
+    if vote_hi_col is not None:
+        use_cols.append(vote_hi_col)
     if ballots_col is not None:
         use_cols.append(ballots_col)
-    if vep_pop_col is not None and vep_pop_col not in use_cols:
-        use_cols.append(vep_pop_col)
-    
+
     out1 = df1[use_cols].copy()
-    
-    # Rename to standard names
-    rename_map = {state1: "State", year1: "Year", vep1: "Voter_Percentage"}
+
+    rename_map = {
+        state1: "State",
+        year1: "Year",
+        vep_pop_col: "VEP",
+        vep_rate_col: "VEP_TURNOUT_RATE",
+    }
+    if vote_hi_col is not None:
+        rename_map[vote_hi_col] = "VOTE_FOR_HIGHEST_OFFICE"
     if ballots_col is not None:
-        rename_map[ballots_col] = "Ballots_Counted"
-    if vep_pop_col is not None:
-        rename_map[vep_pop_col] = "VEP_Pop"
-    
+        rename_map[ballots_col] = "TOTAL_BALLOTS_COUNTED"
+
     out1 = out1.rename(columns=rename_map)
-    
+
     out1["Year"] = pd.to_numeric(out1["Year"], errors="coerce")
     out1 = out1.dropna(subset=["Year"]).copy()
     out1["Year"] = out1["Year"].astype(int)
-    
-    # Parse the provided turnout rate if present
-    out1["Voter_Percentage"] = out1["Voter_Percentage"].apply(parse_percent)
-    
-    # If turnout is missing, compute it when possible: 100 * ballots / VEP
-    if "Ballots_Counted" in out1.columns and "VEP_Pop" in out1.columns:
-        out1["Ballots_Counted"] = out1["Ballots_Counted"].apply(coerce_number)
-        out1["VEP_Pop"] = out1["VEP_Pop"].apply(coerce_number)
-    
-        missing_rate = out1["Voter_Percentage"].isna()
-        computable = missing_rate & out1["Ballots_Counted"].notna() & out1["VEP_Pop"].notna() & (out1["VEP_Pop"] > 0)
-    
-        out1.loc[computable, "Voter_Percentage"] = 100.0 * (out1.loc[computable, "Ballots_Counted"] / out1.loc[computable, "VEP_Pop"])
 
+    out1["State"] = out1["State"].astype(str).str.strip()
+    out1.loc[out1["State"].str.upper().isin(["DC", "D.C.", "DISTRICT OF COLUMBIA"]), "State"] = "District of Columbia"
 
-    # Standardise df2 (2024) and FORCE Year=2024
-    # Many 2024 versions do not include a clean Year column per row.
-    state2 = None
-    for c in df2.columns:
-        if str(c).strip().lower() == "state":
-            state2 = c
-            break
+    # Numeric coercion (commas, blanks)
+    out1["VEP"] = out1["VEP"].apply(coerce_number)
+    out1["VEP_TURNOUT_RATE"] = out1["VEP_TURNOUT_RATE"].apply(parse_percent)
+
+    if "VOTE_FOR_HIGHEST_OFFICE" in out1.columns:
+        out1["VOTE_FOR_HIGHEST_OFFICE"] = out1["VOTE_FOR_HIGHEST_OFFICE"].apply(coerce_number)
+    else:
+        out1["VOTE_FOR_HIGHEST_OFFICE"] = None
+
+    if "TOTAL_BALLOTS_COUNTED" in out1.columns:
+        out1["TOTAL_BALLOTS_COUNTED"] = out1["TOTAL_BALLOTS_COUNTED"].apply(coerce_number)
+    else:
+        out1["TOTAL_BALLOTS_COUNTED"] = None
+
+    # Priority logic (exact order)
+    rate1 = out1.apply(lambda r: safe_pct_from_ratio(r["VOTE_FOR_HIGHEST_OFFICE"], r["VEP"]), axis=1)
+    rate2 = out1["VEP_TURNOUT_RATE"]
+    rate3 = out1.apply(lambda r: safe_pct_from_ratio(r["TOTAL_BALLOTS_COUNTED"], r["VEP"]), axis=1)
+
+    out1["Voter_Percentage"] = rate1
+    out1.loc[out1["Voter_Percentage"].isna(), "Voter_Percentage"] = rate2
+    out1.loc[out1["Voter_Percentage"].isna(), "Voter_Percentage"] = rate3
+
+    out1["Voter_Percentage"] = out1["Voter_Percentage"].apply(clip_pct)
+
+    out1 = out1[["State", "Year", "Voter_Percentage"]].copy()
+
+    # ---- 2024 (UF) ----
+    state2 = find_col_ci(df2, "state")
     if state2 is None:
         raise ValueError("Could not find a State column in 2024 turnout file.")
 
@@ -264,14 +261,15 @@ def load_turnout_vep() -> pd.DataFrame:
     # Combine
     out = pd.concat([out1, out2], ignore_index=True)
 
-    # Parse percent values
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
 
-    # If values look like proportions (0-1), convert to percent
+    # If values look like proportions (0–1), convert to percent
     mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
     out.loc[mask, "Voter_Percentage"] = out.loc[mask, "Voter_Percentage"] * 100.0
 
-    # Keep only target years and non-null turnout
+    out["Voter_Percentage"] = out["Voter_Percentage"].apply(clip_pct)
+
+    # Keep only target years
     out = out[out["Year"].isin(YEARS)].copy()
 
     # Normalise DC naming
@@ -285,8 +283,6 @@ def load_turnout_vep() -> pd.DataFrame:
     out = out.drop_duplicates(subset=["State", "Year"], keep="last")
 
     return out
-
-
 
 
 def flatten_columns_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -316,40 +312,117 @@ def clean_int_cell(x) -> int:
         return 0
 
 
-def normalise_state_name(s: str) -> str:
-    s2 = re.sub(r"[^A-Za-z .]", "", str(s)).strip()
-    if s2.upper() in {"DC", "D.C.", "DISTRICT OF COLUMBIA"}:
+def last_name_token(full_name: str) -> str:
+    s = re.sub(r"[^A-Za-z ]", " ", str(full_name)).strip()
+    parts = [p for p in s.split() if p]
+    return parts[-1] if parts else ""
+
+
+def canonical_state_group(raw_state: str) -> str:
+    """
+    Collapse district rows for Maine and Nebraska into state totals by mapping any
+    Maine* row to Maine and any Nebraska* row to Nebraska.
+    """
+    s = str(raw_state or "").strip()
+    if not s:
+        return ""
+
+    s_l = s.lower()
+
+    # District of Columbia variants
+    if s_l in {"dc", "d.c.", "district of columbia"} or "district of columbia" in s_l:
         return "District of Columbia"
-    return s2
+
+    # Maine / Nebraska districts and at-large
+    if s_l.startswith("maine"):
+        return "Maine"
+    if s_l.startswith("nebraska"):
+        return "Nebraska"
+
+    # Generic cleanup
+    s2 = re.sub(r"[^A-Za-z .]", "", s).strip()
+    if not s2:
+        return ""
+
+    # Match to canonical 51 when possible (case-insensitive)
+    canon = JURISDICTIONS_51_LC.get(s2.lower())
+    return canon or s2
 
 
 def extract_party_map_from_nara_html(html: str) -> dict[str, str]:
     """
-    Map candidate names to party letters, from lines like:
-    President Donald J. Trump [R]
-    Main Opponent Kamala D. Harris [D]
-    Vice President JD Vance [R]
-    V.P. Opponent Tim Walz [D]
+    Attempt to map candidate names to party letters, using:
+      - page text patterns like "President ... (R)" or "President ... [R]"
+      - table header cells that include "(R)" or "[D]" next to candidate names
     """
     party_map: dict[str, str] = {}
 
-    pattern = r"(President|Main Opponent|Vice President|V\.P\.\s*Opponent)\s+([^\[]+?)\s*\[([A-Z])\]"
-    for m in re.finditer(pattern, html):
+    # 1) Broad regex against full HTML text
+    # Handles variations such as "President: Name (R)" and "Main Opponent Name [D]"
+    pattern = re.compile(
+        r"(President|Main Opponent|Opponent|Vice President|V\.?\s*P\.?\s*Opponent)\s*[:\-]?\s*"
+        r"([A-Za-z0-9 .,'\-]+?)\s*(?:\(|\[)\s*([A-Z])\s*(?:\)|\])",
+        flags=re.IGNORECASE,
+    )
+    for m in pattern.finditer(html):
         name = m.group(2).strip()
-        party = m.group(3).strip()
-        party_map[name] = party
+        party = m.group(3).strip().upper()
+        if name and party:
+            party_map[name] = party
+
+    # 2) Header-based extraction (often reliable for 2024)
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        for th in soup.find_all(["th"]):
+            txt = th.get_text(" ", strip=True)
+            if not txt:
+                continue
+            m = re.search(r"(.+?)\s*(?:\(|\[)\s*([A-Z])\s*(?:\)|\])\s*$", txt)
+            if m:
+                name = m.group(1).strip()
+                party = m.group(2).strip().upper()
+                if name and party:
+                    party_map[name] = party
+    except Exception:
+        # If BeautifulSoup parsing fails for any reason, keep what we have from regex
+        pass
 
     return party_map
 
+
+def party_from_header_text(header: str) -> str | None:
+    """
+    If a column header includes a party marker, return the party name.
+    Example: "Donald J. Trump (R)" => "Republican"
+    """
+    if not header:
+        return None
+    s = str(header).strip()
+
+    m = re.search(r"(?:\(|\[)\s*([A-Z])\s*(?:\)|\])\s*$", s)
+    if not m:
+        return None
+
+    party = m.group(1).upper()
+    if party == "D":
+        return "Democratic"
+    if party == "R":
+        return "Republican"
+    return "Other"
 
 
 def party_from_candidate_label(label: str, party_map: dict[str, str], year: int) -> str:
     if not label:
         return "Other"
 
+    # 1) Party marker embedded in the header label (best)
+    direct = party_from_header_text(label)
+    if direct:
+        return direct
+
     label_l = label.lower()
 
-    # First try party_map extracted from page
+    # 2) Try party_map extracted from page text or headers
     for name, party in party_map.items():
         if name.lower() in label_l:
             if party == "D":
@@ -358,7 +431,7 @@ def party_from_candidate_label(label: str, party_map: dict[str, str], year: int)
                 return "Republican"
             return "Other"
 
-    # Fallback: match by last name token
+    # 3) Try match by last name token from party_map keys
     for name, party in party_map.items():
         ln = last_name_token(name).lower()
         if ln and ln in label_l:
@@ -368,7 +441,7 @@ def party_from_candidate_label(label: str, party_map: dict[str, str], year: int)
                 return "Republican"
             return "Other"
 
-    # Fallback: year-based hints
+    # 4) Final fallback: year-based hints (surname tokens)
     hints = FALLBACK_YEAR_PARTY_HINTS.get(year, {})
     for party_name, tokens in hints.items():
         for token in tokens:
@@ -378,31 +451,87 @@ def party_from_candidate_label(label: str, party_map: dict[str, str], year: int)
     return "Other"
 
 
+def identify_candidate_columns(df: pd.DataFrame, state_col: str) -> list[str]:
+    """
+    Identify candidate vote columns by:
+      - excluding the state column
+      - requiring numeric-like content in at least half of sampled cells
+      - requiring a positive column total
+      - excluding obvious non-candidate metadata columns
+    """
+    exclude_tokens = [
+        "total", "electoral", "electors", "votes total", "district", "at large",
+        "popular", "percent", "percentage", "margin",
+    ]
 
-def load_state_winners_from_nara() -> pd.DataFrame:
+    candidate_cols: list[str] = []
+    for c in df.columns:
+        if c == state_col:
+            continue
+
+        c_l = str(c).strip().lower()
+        if any(tok in c_l for tok in exclude_tokens):
+            continue
+
+        sample = df[c].head(25).astype(str)
+        hits = sample.str.contains(r"^\s*[\d,]+(?:\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
+
+        if hits < 0.5:
+            continue
+
+        # Numeric conversion to verify total > 0
+        s_num = df[c].apply(clean_int_cell)
+        if int(s_num.sum()) > 0:
+            candidate_cols.append(c)
+
+    return candidate_cols
+
+
+def find_state_col(df: pd.DataFrame) -> str:
+    cols_lower = {str(c).strip().lower(): c for c in df.columns}
+    if "state" in cols_lower:
+        return cols_lower["state"]
+    return df.columns[0]
+
+
+def validate_year_rows(year: int, out: pd.DataFrame, context: str) -> None:
+    got = set(out["State"].tolist())
+    want = set(JURISDICTIONS_51)
+    missing = sorted(want - got)
+    extra = sorted(got - want)
+
+    if missing or extra or len(out) != 51:
+        print(f"{year} validation issue ({context}):")
+        if missing:
+            print(f"  Missing states ({len(missing)}): {missing}")
+        if extra:
+            print(f"  Extra states ({len(extra)}): {extra}")
+        print(f"  Row count: {len(out)}")
+        raise ValueError(f"{year}: Expected exactly 51 winner rows, got {len(out)}.")
+
+
+def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
     """
     Returns columns: State, Year, Winning_Party
 
-    Notes:
-    - For Maine and Nebraska, the NARA table can show split electoral votes.
-      This method assigns the winner as the candidate with the most electoral votes in that state.
+    - Collapses Maine and Nebraska district rows to state totals before choosing a winner.
+    - For 2024, maps winner candidate to party using party markers when present,
+      else falls back to surname tokens (Trump => Republican, Harris => Democratic).
+    - Produces exactly 51 winner rows for each year.
     """
     rows: list[dict[str, object]] = []
 
     for year in YEARS:
         url = NARA_URLS[year]
-
-        # Use requests so we can set User-Agent and also reuse your caching pattern
-        html = fetch_text(url, CACHE_DIR / f"nara_{year}.html", force_refresh=True)
+        html = fetch_text(url, CACHE_DIR / f"nara_{year}.html", force_refresh=force_refresh)
 
         party_map = extract_party_map_from_nara_html(html)
 
-        # Read tables from HTML
         tables = pd.read_html(StringIO(html))
         if not tables:
             raise ValueError(f"No HTML tables found on NARA page for {year}.")
 
-        # Find the most likely table: has a State column and includes Alabama somewhere
+        # Choose the best table: has State column and includes many known states
         target = None
         best_score = -1
 
@@ -410,19 +539,21 @@ def load_state_winners_from_nara() -> pd.DataFrame:
             t = flatten_columns_df(t.copy())
             cols = [str(c).strip().lower() for c in t.columns]
 
+            state_guess = "state" in cols
             score = 0
-            if "state" in cols:
+            if state_guess:
                 score += 10
-            # Look for common signal words
-            if any("electoral" in c for c in cols):
-                score += 2
 
-            # Look for Alabama in the body as a strong signal
-            body_text = " ".join(t.astype(str).fillna("").values.flatten().tolist())
-            if "Alabama" in body_text:
-                score += 5
+            # Score based on how many canonical state names appear in the first column
+            try:
+                sc = find_state_col(t)
+                first_col_vals = t[sc].astype(str).fillna("").tolist()
+                hits = sum(1 for v in first_col_vals if canonical_state_group(v) in JURISDICTIONS_51)
+                score += min(hits, 60) * 0.2
+            except Exception:
+                pass
 
-            # Prefer wider tables (usually candidate columns)
+            # Prefer wider tables (candidate columns)
             score += min(len(cols), 20) * 0.1
 
             if score > best_score:
@@ -432,71 +563,26 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         if target is None:
             raise ValueError(f"Could not identify the Electoral College by-state table for {year}.")
 
-        # Identify state column
-        cols_lower = {str(c).strip().lower(): c for c in target.columns}
-        state_col = cols_lower.get("state", target.columns[0])
-
         df = target.copy()
+        state_col = find_state_col(df)
+
         df[state_col] = df[state_col].astype(str).str.strip()
-        df["State"] = df[state_col].apply(normalise_state_name)
+        df["State_Group"] = df[state_col].apply(canonical_state_group)
 
         # Drop totals / empty rows
-        df = df[df["State"].str.len() > 0]
-        df = df[~df["State"].str.lower().isin(["total"])]
+        df = df[df["State_Group"].str.len() > 0].copy()
+        df = df[~df["State_Group"].str.lower().isin(["total"])].copy()
 
-        # 1) First try the modern format: candidate names appear in column headers (2024 page is like this).
-        # Build surname tokens from party_map names, then keep columns that contain those tokens.
-        surname_tokens = [last_name_token(n) for n in party_map.keys() if last_name_token(n)]
-        surname_tokens = [t for t in surname_tokens if t]  # remove empties
+        # Keep only rows that map to the canonical 51
+        df = df[df["State_Group"].isin(JURISDICTIONS_51)].copy()
 
-        name_cols: list[str] = []
-        for c in df.columns:
-            c_str = str(c)
-            c_l = c_str.lower()
-            if any(tok.lower() in c_l for tok in surname_tokens):
-                name_cols.append(c)
-
-        # Keep only columns with numeric-like content
-        candidate_cols: list[str] = []
-        for c in name_cols:
-            sample = df[c].head(20).astype(str)
-            hits = sample.str.contains(r"^\s*[\d,]+(?:\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
-            if hits >= 0.5:
-                candidate_cols.append(c)
-
-        if candidate_cols:
-            # Convert candidate columns to ints
-            for c in candidate_cols:
-                df[c] = df[c].apply(clean_int_cell)
-
-            # Keep only canonical jurisdictions and collapse district rows (ME/NE)
-            df = df[df["State"].isin(JURISDICTIONS_51)].copy()
-            grouped = df.groupby("State", as_index=False)[candidate_cols].sum()
-
-            grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
-            grouped["Winning_Party"] = grouped["Winner_Label"].apply(
-                lambda x: party_from_candidate_label(str(x), party_map, year)
-            )
-            grouped["Year"] = year
-
-            out = grouped[["State", "Year", "Winning_Party"]].copy()
-            out = out.drop_duplicates(subset=["State", "Year"])
-
-            for _, r in out.iterrows():
-                rows.append({"State": r["State"], "Year": int(r["Year"]), "Winning_Party": r["Winning_Party"]})
-
-            # Done for this year
-            continue
-
-
-        # Special handling for NARA tables that use "For President" / "For Vice-President"
-        # These tables represent TWO tickets (ticket A and ticket B) as paired columns.
+        # Detect "For President / For Vice-President" style
         cols_l = [str(c).strip().lower() for c in df.columns]
-        has_for_pres = any(c.startswith("for president") for c in cols_l)
-        has_for_vp = any(c.startswith("for vice-president") for c in cols_l) or any(c.startswith("for vice president") for c in cols_l)
+        has_for_pres = any(c == "for president" or c.startswith("for president") for c in cols_l)
+        has_for_vp = any(c in {"for vice-president", "for vice president"} or c.startswith("for vice") for c in cols_l)
 
         if has_for_pres and has_for_vp:
-            # Collect ticket A and ticket B columns
+            # Find the paired ticket columns
             pres_a = None
             vp_a = None
             pres_b = None
@@ -516,33 +602,46 @@ def load_state_winners_from_nara() -> pd.DataFrame:
             if not all([pres_a, vp_a, pres_b, vp_b]):
                 raise ValueError(f"{year}: Could not locate expected For President/VP columns: {list(df.columns)}")
 
-            # Convert to ints
             for c in [pres_a, vp_a, pres_b, vp_b]:
                 df[c] = df[c].apply(clean_int_cell)
 
-            # Build ticket totals (each state should have EV for president and vice president)
             df["Ticket_A_Total"] = df[pres_a] + df[vp_a]
             df["Ticket_B_Total"] = df[pres_b] + df[vp_b]
 
-            # Collapse district rows and pick winner ticket
-            df = df[df["State"].isin(JURISDICTIONS_51)].copy()
-            grouped = df.groupby("State", as_index=False)[["Ticket_A_Total", "Ticket_B_Total"]].sum()
-
+            grouped = df.groupby("State_Group", as_index=False)[["Ticket_A_Total", "Ticket_B_Total"]].sum()
             grouped["Winner_Ticket"] = grouped[["Ticket_A_Total", "Ticket_B_Total"]].idxmax(axis=1)
 
-            # Determine party from the page (President/Main Opponent), else fallback by year.
-            # Ticket A on NARA is the "President" ticket; Ticket B is the "Main Opponent" ticket.
-            def party_from_ticket(ticket_label: str) -> str:
+            # Determine ticket parties using extracted party_map when possible, else year hints
+            def ticket_party(ticket_label: str) -> str:
+                # Ticket A corresponds to "President" ticket on NARA pages, Ticket B to "Main Opponent"
+                if party_map:
+                    # If party_map has entries, use them to infer ticket parties
+                    # We try to find any "President ..." and "Main Opponent ..." entries in the raw map.
+                    president_party = None
+                    opponent_party = None
+                    for name, p in party_map.items():
+                        # name is candidate name; p is party letter
+                        # We do not rely on label text here, only on presence of (D)/(R) in map keys.
+                        # The map is built from page text and header patterns.
+                        # This still works because page-level candidates are associated with parties.
+                        pass  # no-op: we will use year hints below when headers are not usable
+
+                # Practical and stable fallback:
+                # Use year hints by candidate surname tokens (these are in your requirements).
                 if ticket_label == "Ticket_A_Total":
-                    # President ticket
-                    # Try to detect party from extracted party_map; else use fallback for year
-                    # Most years: President is the incumbent winner, so party_map is best effort only.
-                    # We will use year fallback: map President ticket to the known winning party for that year.
-                    # 2008,2012,2020 are Democratic; 2016 is Republican; 2024 depends on final certified result.
+                    # President ticket (overall winner) name is not in table headers, so use year hint tokens.
+                    # For 2024, you explicitly want correct parties; the year hint mapping covers Trump/Harris.
                     if year in {2008, 2012, 2020}:
                         return "Democratic"
                     if year == 2016:
                         return "Republican"
+                    # 2024: do not force by year; attempt to infer from party_map text first, else surname fallback.
+                    # If party_map contains a name with party that includes Trump/Harris, use it.
+                    for k, p in party_map.items():
+                        if "trump" in k.lower():
+                            return "Republican" if p == "R" else "Other"
+                        if "harris" in k.lower():
+                            return "Democratic" if p == "D" else "Other"
                     return "Other"
                 else:
                     # Opponent ticket
@@ -550,82 +649,70 @@ def load_state_winners_from_nara() -> pd.DataFrame:
                         return "Republican"
                     if year == 2016:
                         return "Democratic"
+                    for k, p in party_map.items():
+                        if "trump" in k.lower():
+                            return "Democratic" if p == "D" else "Other"
+                        if "harris" in k.lower():
+                            return "Republican" if p == "R" else "Other"
                     return "Other"
 
-            grouped["Winning_Party"] = grouped["Winner_Ticket"].apply(party_from_ticket)
+            grouped["Winning_Party"] = grouped["Winner_Ticket"].apply(ticket_party)
+            grouped["State"] = grouped["State_Group"]
             grouped["Year"] = year
 
             out = grouped[["State", "Year", "Winning_Party"]].copy()
-            out = out.drop_duplicates(subset=["State", "Year"])
+            validate_year_rows(year, out, context="for-president table")
 
             for _, r in out.iterrows():
                 rows.append({"State": r["State"], "Year": int(r["Year"]), "Winning_Party": r["Winning_Party"]})
 
-            # Done for this year
             continue
 
-
-        # Candidate columns: numeric-looking columns except the state column
-        candidate_cols: list[str] = []
-        for c in df.columns:
-            c_l = str(c).strip().lower()
-            if c == state_col or c_l == "state":
-                continue
-        
-            # Exclude obvious non-candidate columns
-            if any(k in c_l for k in ["total", "electoral", "votes", "vote", "electors", "district", "at large"]):
-                continue
-        
-            sample = df[c].head(20).astype(str)
-            hits = sample.str.contains(r"^\s*[\d,]+(?:\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
-            if hits >= 0.5:
-                candidate_cols.append(c)
-
-
+        # Generic candidate-name header table path
+        candidate_cols = identify_candidate_columns(df, state_col=state_col)
         if not candidate_cols:
-            raise ValueError(f"Could not identify candidate columns for {year}. Columns: {list(df.columns)}")
+            # If we get here, it means the table structure changed and needs inspection.
+            raise ValueError(f"{year}: Could not identify candidate columns. Columns: {list(df.columns)}")
 
-        # Convert candidate columns to ints
         for c in candidate_cols:
             df[c] = df[c].apply(clean_int_cell)
-        
-        # Keep only real candidate columns (columns that receive EV totals)
-        candidate_cols = choose_candidate_columns_by_total(df, candidate_cols)
-        if not candidate_cols:
-            raise ValueError(f"No candidate columns with EV totals detected for {year}.")     
 
-        print(f"{year} candidate columns kept: {candidate_cols}")
-        print(f"{year} candidate EV totals:\n{df[candidate_cols].sum().sort_values(ascending=False).to_string()}")
-
-
-        # Collapse district rows (Maine / Nebraska) by summing candidate EV within each State
-        # This prevents counts like 52 and ensures one record per jurisdiction.
-        df = df[df["State"].isin(JURISDICTIONS_51)].copy()
-
-        grouped = df.groupby("State", as_index=False)[candidate_cols].sum()
+        grouped = df.groupby("State_Group", as_index=False)[candidate_cols].sum()
 
         grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
-        grouped["Winning_Party"] = grouped["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map, year))
+        grouped["Winning_Party"] = grouped["Winner_Label"].apply(
+            lambda x: party_from_candidate_label(str(x), party_map, year)
+        )
 
+        grouped["State"] = grouped["State_Group"]
         grouped["Year"] = year
 
         out = grouped[["State", "Year", "Winning_Party"]].copy()
-
-
-
-        # NARA pages sometimes include territories in some formats; you can filter if needed.
-        out = out.drop_duplicates(subset=["State", "Year"])
+        validate_year_rows(year, out, context="candidate-header table")
 
         for _, r in out.iterrows():
             rows.append({"State": r["State"], "Year": int(r["Year"]), "Winning_Party": r["Winning_Party"]})
 
     return pd.DataFrame(rows).drop_duplicates(subset=["State", "Year"])
-    
+
+
+def print_year_counts(label: str, df: pd.DataFrame, value_col: str) -> None:
+    counts = (
+        df.dropna(subset=[value_col])
+        .groupby("Year")["State"]
+        .nunique()
+        .reindex(YEARS, fill_value=0)
+    )
+    print(f"{label} counts by year (unique states):")
+    for y in YEARS:
+        print(f"  {y}: {int(counts.loc[y])}")
 
 
 def main() -> None:
-    turnout = load_turnout_vep()
-    winners = load_state_winners_from_nara()
+    force_refresh = env_flag("FORCE_REFRESH", default=False)
+
+    turnout = load_turnout_vep(force_refresh=force_refresh)
+    winners = load_state_winners_from_nara(force_refresh=force_refresh)
 
     base = make_base_grid()
 
@@ -635,34 +722,60 @@ def main() -> None:
         .merge(winners, on=["State", "Year"], how="left")
     )
 
+    # Prints requested diagnostics
     missing_turnout = final[final["Voter_Percentage"].isna()][["Year", "State"]]
     if not missing_turnout.empty:
         print("Missing turnout for these State-Year rows:")
         print(missing_turnout.sort_values(["Year", "State"]).to_string(index=False))
 
-    
-    # If a winner is missing, label as Other so Tableau still renders
     missing_winners = final[final["Winning_Party"].isna()][["Year", "State"]]
     if not missing_winners.empty:
         print("Missing winners for these State-Year rows:")
         print(missing_winners.sort_values(["Year", "State"]).to_string(index=False))
-    
+
+    print_year_counts("Turnout", turnout, "Voter_Percentage")
+    print_year_counts("Winners", winners, "Winning_Party")
+
+    # Fill missing winners as Other so Tableau still renders, but validate 2024 is not all Other.
     final["Winning_Party"] = final["Winning_Party"].fillna("Other")
-    
-    expected_years = set(YEARS)
-    counts = final.groupby("Year")["State"].nunique()
-    
-    bad_years = {y: int(counts.get(y, 0)) for y in expected_years if int(counts.get(y, 0)) != 51}
+
+    # Hard validation requirements
+    if len(final) != 255:
+        raise ValueError(f"Expected exactly 255 rows (51 * 5), got {len(final)}.")
+
+    counts = final.groupby("Year")["State"].nunique().reindex(YEARS, fill_value=0)
+    bad_years = {y: int(counts.loc[y]) for y in YEARS if int(counts.loc[y]) != 51}
     if bad_years:
-        raise ValueError(f"Expected 51 jurisdictions (50 states + DC). Got: {bad_years}")
+        raise ValueError(f"Expected 51 jurisdictions (50 states + DC) per year. Got: {bad_years}")
 
+    # Ensure the five previously missing turnout rows are present
+    must_have = [
+        ("Connecticut", 2008),
+        ("Mississippi", 2008),
+        ("Texas", 2008),
+        ("Montana", 2020),
+        ("Pennsylvania", 2020),
+    ]
+    for st, yr in must_have:
+        v = final.loc[(final["State"] == st) & (final["Year"] == yr), "Voter_Percentage"]
+        if v.empty or pd.isna(v.iloc[0]):
+            raise ValueError(f"Missing required Voter_Percentage for {st}, {yr}.")
 
+    # Ensure 2024 is not all Other
+    parties_2024 = set(final.loc[final["Year"] == 2024, "Winning_Party"].tolist())
+    if parties_2024 == {"Other"}:
+        raise ValueError("2024 Winning_Party is Other for every state. NARA parsing and mapping did not work.")
+    if not ({"Democratic", "Republican"} & parties_2024):
+        raise ValueError(f"2024 Winning_Party does not contain Democratic or Republican. Got: {sorted(parties_2024)}")
+
+    # Final output
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     final = final.sort_values(["State", "Year"])
     final.to_csv(OUT_PATH, index=False)
 
     print(f"Wrote {len(final):,} rows to {OUT_PATH}")
-
+    print("2024 Winning_Party distribution:")
+    print(final[final["Year"] == 2024]["Winning_Party"].value_counts().to_string())
 
 
 if __name__ == "__main__":
