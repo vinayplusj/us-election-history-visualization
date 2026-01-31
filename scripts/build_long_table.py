@@ -88,6 +88,29 @@ def parse_percent(value) -> float | None:
     except ValueError:
         return None
 
+def find_first_col(df: pd.DataFrame, include_all: list[str]) -> str | None:
+    cols = []
+    for c in df.columns:
+        name = str(c).strip().lower()
+        if all(tok in name for tok in include_all):
+            cols.append(c)
+    return cols[0] if cols else None
+
+
+def coerce_number(x) -> float | None:
+    if pd.isna(x):
+        return None
+    s = str(x).strip().replace(",", "")
+    s = re.sub(r"\[[^\]]*\]", "", s)
+    s = re.sub(r"\([^)]*\)", "", s)
+    s = s.strip()
+    if s in {"", "-", "—"}:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
 def choose_candidate_columns_by_total(df: pd.DataFrame, candidate_cols: list[str]) -> list[str]:
     """
     Keep only columns that actually carry electoral votes.
@@ -105,8 +128,8 @@ def load_turnout_vep() -> pd.DataFrame:
     """
 
     # Download both turnout files
-    t1 = fetch_text(TURNOUT_URL_1980_2022, CACHE_DIR / "Turnout_1980_2022_v1.2.csv")
-    t2 = fetch_text(TURNOUT_URL_2024, CACHE_DIR / "Turnout_2024G_v0.3.csv")
+    t1 = fetch_text(TURNOUT_URL_1980_2022, CACHE_DIR / "Turnout_1980_2022_v1.2.csv", force_refresh=True)
+    t2 = fetch_text(TURNOUT_URL_2024, CACHE_DIR / "Turnout_2024G_v0.3.csv", force_refresh=True)
 
     df1 = pd.read_csv(StringIO(t1))
     df2 = pd.read_csv(StringIO(t2))
@@ -130,12 +153,60 @@ def load_turnout_vep() -> pd.DataFrame:
     if not vep1_candidates:
         raise ValueError("Could not find VEP turnout column in 1980–2022 turnout file.")
     vep1 = vep1_candidates[0]
-
-    out1 = df1[[state1, year1, vep1]].copy()
-    out1.columns = ["State", "Year", "Voter_Percentage"]
+    
+    # Try to find numerator and denominator columns for a computed VEP turnout:
+    # numerator: ballots counted
+    # denominator: VEP (eligible population)
+    ballots_col = find_first_col(df1, ["ballots", "counted"])
+    vep_pop_col = None
+    
+    # Common patterns for VEP population columns
+    for cand in ["vep", "vep population", "vep_pop", "vep total", "vep estimate"]:
+        for c in df1.columns:
+            if str(c).strip().lower() == cand:
+                vep_pop_col = c
+                break
+        if vep_pop_col:
+            break
+    
+    # If not found by exact match, try a looser match
+    if vep_pop_col is None:
+        vep_pop_col = find_first_col(df1, ["vep"])
+    
+    use_cols = [state1, year1, vep1]
+    if ballots_col is not None:
+        use_cols.append(ballots_col)
+    if vep_pop_col is not None and vep_pop_col not in use_cols:
+        use_cols.append(vep_pop_col)
+    
+    out1 = df1[use_cols].copy()
+    
+    # Rename to standard names
+    rename_map = {state1: "State", year1: "Year", vep1: "Voter_Percentage"}
+    if ballots_col is not None:
+        rename_map[ballots_col] = "Ballots_Counted"
+    if vep_pop_col is not None:
+        rename_map[vep_pop_col] = "VEP_Pop"
+    
+    out1 = out1.rename(columns=rename_map)
+    
     out1["Year"] = pd.to_numeric(out1["Year"], errors="coerce")
     out1 = out1.dropna(subset=["Year"]).copy()
     out1["Year"] = out1["Year"].astype(int)
+    
+    # Parse the provided turnout rate if present
+    out1["Voter_Percentage"] = out1["Voter_Percentage"].apply(parse_percent)
+    
+    # If turnout is missing, compute it when possible: 100 * ballots / VEP
+    if "Ballots_Counted" in out1.columns and "VEP_Pop" in out1.columns:
+        out1["Ballots_Counted"] = out1["Ballots_Counted"].apply(coerce_number)
+        out1["VEP_Pop"] = out1["VEP_Pop"].apply(coerce_number)
+    
+        missing_rate = out1["Voter_Percentage"].isna()
+        computable = missing_rate & out1["Ballots_Counted"].notna() & out1["VEP_Pop"].notna() & (out1["VEP_Pop"] > 0)
+    
+        out1.loc[computable, "Voter_Percentage"] = 100.0 * (out1.loc[computable, "Ballots_Counted"] / out1.loc[computable, "VEP_Pop"])
+
 
     # Standardise df2 (2024) and FORCE Year=2024
     # Many 2024 versions do not include a clean Year column per row.
@@ -177,7 +248,7 @@ def load_turnout_vep() -> pd.DataFrame:
 
 
     # Keep only target years and non-null turnout
-    out = out[out["Year"].isin(YEARS)].dropna(subset=["Voter_Percentage"]).copy()
+    out = out[out["Year"].isin(YEARS)].copy()
 
     # Normalise DC naming
     out["State"] = out["State"].astype(str).str.strip()
