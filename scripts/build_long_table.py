@@ -41,6 +41,12 @@ CACHE_DIR = Path("sources_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def make_base_grid() -> pd.DataFrame:
+    return pd.MultiIndex.from_product(
+        [sorted(JURISDICTIONS_51), YEARS],
+        names=["State", "Year"]
+    ).to_frame(index=False)
+
 def fetch_text(url: str, cache_path: Path, force_refresh: bool = False) -> str:
     """
     Download a URL and cache it locally (committing cache is optional).
@@ -142,6 +148,11 @@ def load_turnout_vep() -> pd.DataFrame:
 
     # Parse percent values
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
+
+    # If values look like proportions (0-1), convert to percent
+    mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
+    out.loc[mask, "Voter_Percentage"] = out.loc[mask, "Voter_Percentage"] * 100.0
+
 
     # Keep only target years and non-null turnout
     out = out[out["Year"].isin(YEARS)].dropna(subset=["Voter_Percentage"]).copy()
@@ -333,7 +344,7 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         for c in candidate_cols:
             df[c] = df[c].apply(clean_int_cell)
 
-         # Collapse district rows (Maine / Nebraska) by summing candidate EV within each State
+        # Collapse district rows (Maine / Nebraska) by summing candidate EV within each State
         # This prevents counts like 52 and ensures one record per jurisdiction.
         df = df[df["State"].isin(JURISDICTIONS_51)].copy()
 
@@ -362,7 +373,18 @@ def main() -> None:
     turnout = load_turnout_vep()
     winners = load_state_winners_from_nara()
 
-    final = turnout.merge(winners, on=["State", "Year"], how="left")
+    base = make_base_grid()
+
+    final = (
+        base
+        .merge(turnout, on=["State", "Year"], how="left")
+        .merge(winners, on=["State", "Year"], how="left")
+    )
+    
+    # If a winner is missing, label as Other so Tableau still renders
+    final["Winning_Party"] = final["Winning_Party"].fillna("Other")
+
+    
     expected_years = set(YEARS)
     counts = final.groupby("Year")["State"].nunique()
     
@@ -370,9 +392,6 @@ def main() -> None:
     if bad_years:
         raise ValueError(f"Expected 51 jurisdictions (50 states + DC). Got: {bad_years}")
 
-
-    # If a winner is missing, label as Other so Tableau still renders
-    final["Winning_Party"] = final["Winning_Party"].fillna("Other")
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     final = final.sort_values(["State", "Year"])
