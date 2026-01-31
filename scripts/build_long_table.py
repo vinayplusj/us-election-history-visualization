@@ -10,6 +10,26 @@ import requests
 
 YEARS = [2008, 2012, 2016, 2020, 2024]
 
+JURISDICTIONS_51 = {
+    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware",
+    "Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana",
+    "Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana",
+    "Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina",
+    "North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina",
+    "South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+    "Wisconsin","Wyoming","District of Columbia"
+}
+
+    
+# Winners by state sources (National Archives Electoral College pages)
+NARA_URLS = {
+    2008: "https://www.archives.gov/electoral-college/2008",
+    2012: "https://www.archives.gov/electoral-college/2012",
+    2016: "https://www.archives.gov/electoral-college/2016",
+    2020: "https://www.archives.gov/electoral-college/2020",
+    2024: "https://www.archives.gov/electoral-college/2024",
+}
+
 # Turnout sources (VEP turnout by state)
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
 TURNOUT_URL_2024 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.3.csv"
@@ -60,6 +80,7 @@ def load_turnout_vep() -> pd.DataFrame:
     Returns columns: State, Year, Voter_Percentage
     Where Voter_Percentage is VEP turnout percent (0-100).
     """
+
     # Download both turnout files
     t1 = fetch_text(TURNOUT_URL_1980_2022, CACHE_DIR / "Turnout_1980_2022_v1.2.csv")
     t2 = fetch_text(TURNOUT_URL_2024, CACHE_DIR / "Turnout_2024G_v0.3.csv")
@@ -67,75 +88,77 @@ def load_turnout_vep() -> pd.DataFrame:
     df1 = pd.read_csv(StringIO(t1))
     df2 = pd.read_csv(StringIO(t2))
 
-    df = pd.concat([df1, df2], ignore_index=True)
+    # Standardise df1 (1980–2022)
+    # Find year/state/vep turnout columns case-insensitively
+    def find_col(df: pd.DataFrame, want: str) -> str:
+        for c in df.columns:
+            if str(c).strip().lower() == want:
+                return c
+        raise ValueError(f"Could not find column '{want}' in turnout file.")
 
-    # Try to standardize common column names used in UF turnout tables.
-    # These files include a VEP turnout rate column, typically as a percent string.
-    col_year = None
-    for c in df.columns:
-        if str(c).strip().lower() == "year":
-            col_year = c
-            break
-    if col_year is None:
-        raise ValueError("Could not find a Year column in turnout files.")
+    year1 = find_col(df1, "year")
+    state1 = find_col(df1, "state")
 
-    # State name column can vary. Often it is "State" or similar.
-    col_state = None
-    for c in df.columns:
-        if str(c).strip().lower() == "state":
-            col_state = c
-            break
-    if col_state is None:
-        raise ValueError("Could not find a State column in turnout files.")
-
-    # VEP turnout rate column varies. Look for something containing "vep" and "turnout".
-    vep_col_candidates = []
-    for c in df.columns:
+    vep1_candidates = []
+    for c in df1.columns:
         name = str(c).strip().lower()
         if "vep" in name and "turnout" in name:
-            vep_col_candidates.append(c)
+            vep1_candidates.append(c)
+    if not vep1_candidates:
+        raise ValueError("Could not find VEP turnout column in 1980–2022 turnout file.")
+    vep1 = vep1_candidates[0]
 
-    if not vep_col_candidates:
-        # Some versions place the VEP turnout rate as the last columns, often two rates (VEP, VAP).
-        # As a fallback, search for columns that look like percentages and contain 'vep' nearby.
-        raise ValueError(
-            "Could not find a VEP turnout column (expected a column containing both 'VEP' and 'turnout')."
-        )
+    out1 = df1[[state1, year1, vep1]].copy()
+    out1.columns = ["State", "Year", "Voter_Percentage"]
+    out1["Year"] = pd.to_numeric(out1["Year"], errors="coerce")
+    out1 = out1.dropna(subset=["Year"]).copy()
+    out1["Year"] = out1["Year"].astype(int)
 
-    # Choose the first matching VEP turnout column.
-    col_vep = vep_col_candidates[0]
+    # Standardise df2 (2024) and FORCE Year=2024
+    # Many 2024 versions do not include a clean Year column per row.
+    state2 = None
+    for c in df2.columns:
+        if str(c).strip().lower() == "state":
+            state2 = c
+            break
+    if state2 is None:
+        raise ValueError("Could not find a State column in 2024 turnout file.")
 
-    out = df[[col_state, col_year, col_vep]].copy()
-    out.columns = ["State", "Year", "Voter_Percentage"]
-    
-    # Coerce non-numeric years to NaN, then drop them
-    out["Year"] = pd.to_numeric(out["Year"], errors="coerce").astype("Int64")
-    out = out.dropna(subset=["Year"]).copy()
-    out["Year"] = out["Year"].astype(int)
+    vep2_candidates = []
+    for c in df2.columns:
+        name = str(c).strip().lower()
+        if "vep" in name and "turnout" in name:
+            vep2_candidates.append(c)
+    if not vep2_candidates:
+        raise ValueError("Could not find VEP turnout column in 2024 turnout file.")
+    vep2 = vep2_candidates[0]
 
+    out2 = df2[[state2, vep2]].copy()
+    out2.columns = ["State", "Voter_Percentage"]
+    out2["Year"] = 2024
 
+    # Combine
+    out = pd.concat([out1, out2], ignore_index=True)
+
+    # Parse percent values
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
 
-    out = out[out["Year"].isin(YEARS)].dropna(subset=["Voter_Percentage"])
+    # Keep only target years and non-null turnout
+    out = out[out["Year"].isin(YEARS)].dropna(subset=["Voter_Percentage"]).copy()
 
-    # Normalise state naming where needed
+    # Normalise DC naming
     out["State"] = out["State"].astype(str).str.strip()
     out.loc[out["State"].str.upper().isin(["DC", "D.C.", "DISTRICT OF COLUMBIA"]), "State"] = "District of Columbia"
 
-    # Keep 50 states + DC only
-    # UF file should already have the correct set, but we keep this as a safety filter.
-    out = out.drop_duplicates(subset=["State", "Year"])
+    # Filter to the canonical 51
+    out = out[out["State"].isin(JURISDICTIONS_51)].copy()
+
+    # Ensure one row per State-Year
+    out = out.drop_duplicates(subset=["State", "Year"], keep="last")
 
     return out
-    
-# Winners by state sources (National Archives Electoral College pages)
-NARA_URLS = {
-    2008: "https://www.archives.gov/electoral-college/2008",
-    2012: "https://www.archives.gov/electoral-college/2012",
-    2016: "https://www.archives.gov/electoral-college/2016",
-    2020: "https://www.archives.gov/electoral-college/2020",
-    2024: "https://www.archives.gov/electoral-college/2024",
-}
+
+
 
 
 def flatten_columns_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -298,7 +321,7 @@ def load_state_winners_from_nara() -> pd.DataFrame:
                 continue
         
             sample = df[c].head(20).astype(str)
-            hits = sample.str.contains(r"^\s*[\d,]+(\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
+            hits = sample.str.contains(r"^\s*[\d,]+(?:\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
             if hits >= 0.5:
                 candidate_cols.append(c)
 
@@ -310,15 +333,19 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         for c in candidate_cols:
             df[c] = df[c].apply(clean_int_cell)
 
-        # Winner label is the candidate column with the maximum EV in that row
-        df["Winner_Label"] = df[candidate_cols].idxmax(axis=1)
+         # Collapse district rows (Maine / Nebraska) by summing candidate EV within each State
+        # This prevents counts like 52 and ensures one record per jurisdiction.
+        df = df[df["State"].isin(JURISDICTIONS_51)].copy()
 
-        # Map candidate label to party
-        df["Winning_Party"] = df["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map, year))    
-        # Add year and export
-        df["Year"] = year
+        grouped = df.groupby("State", as_index=False)[candidate_cols].sum()
 
-        out = df[["State", "Year", "Winning_Party"]].copy()
+        grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
+        grouped["Winning_Party"] = grouped["Winner_Label"].apply(lambda x: party_from_candidate_label(str(x), party_map))
+        grouped["Year"] = year
+
+        out = grouped[["State", "Year", "Winning_Party"]].copy()
+
+
 
         # NARA pages sometimes include territories in some formats; you can filter if needed.
         out = out.drop_duplicates(subset=["State", "Year"])
