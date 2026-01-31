@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import requests
 
 YEARS = [2008, 2012, 2016, 2020, 2024]
 
