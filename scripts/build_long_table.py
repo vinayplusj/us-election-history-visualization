@@ -111,6 +111,11 @@ def coerce_number(x) -> float | None:
     except ValueError:
         return None
 
+def last_name_token(full_name: str) -> str:
+    s = re.sub(r"[^A-Za-z ]", " ", str(full_name)).strip()
+    parts = [p for p in s.split() if p]
+    return parts[-1] if parts else ""
+    
 def choose_candidate_columns_by_total(df: pd.DataFrame, candidate_cols: list[str]) -> list[str]:
     """
     Keep only columns that actually carry electoral votes.
@@ -120,6 +125,31 @@ def choose_candidate_columns_by_total(df: pd.DataFrame, candidate_cols: list[str
     # Keep only columns with some EV
     keep = [c for c in totals.index.tolist() if totals[c] > 0]
     return keep
+
+def find_vep_population_col(df: pd.DataFrame) -> str | None:
+    for c in df.columns:
+        name = str(c).strip().lower()
+        if "vep" in name and "turnout" not in name and any(k in name for k in ["pop", "population", "estimate", "total"]):
+            return c
+    # fallback: exact common names
+    for c in df.columns:
+        if str(c).strip().lower() in {"vep"}:
+            return c
+    return None
+
+
+def find_ballots_col(df: pd.DataFrame) -> str | None:
+    for c in df.columns:
+        name = str(c).strip().lower()
+        if "ballots" in name and ("counted" in name or "cast" in name) and "turnout" not in name:
+            return c
+    # looser fallback
+    for c in df.columns:
+        name = str(c).strip().lower()
+        if "ballots" in name and "turnout" not in name:
+            return c
+    return None
+
 
 def load_turnout_vep() -> pd.DataFrame:
     """
@@ -157,17 +187,17 @@ def load_turnout_vep() -> pd.DataFrame:
     # Try to find numerator and denominator columns for a computed VEP turnout:
     # numerator: ballots counted
     # denominator: VEP (eligible population)
-    ballots_col = find_first_col(df1, ["ballots", "counted"])
-    vep_pop_col = None
+    ballots_col = find_ballots_col(df1)
+    vep_pop_col = find_vep_population_col(df1)
     
     # Common patterns for VEP population columns
-    for cand in ["vep", "vep population", "vep_pop", "vep total", "vep estimate"]:
+    if vep_pop_col is None:
+        # fallback: any column containing "vep" but NOT "turnout"
         for c in df1.columns:
-            if str(c).strip().lower() == cand:
+            name = str(c).strip().lower()
+            if "vep" in name and "turnout" not in name:
                 vep_pop_col = c
                 break
-        if vep_pop_col:
-            break
     
     # If not found by exact match, try a looser match
     if vep_pop_col is None:
@@ -237,15 +267,9 @@ def load_turnout_vep() -> pd.DataFrame:
     # Parse percent values
     out["Voter_Percentage"] = out["Voter_Percentage"].apply(parse_percent)
 
-    # If values look like proportions (0 to 1), convert to percent (0 to 100)
-    mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
-    out.loc[mask, "Voter_Percentage"] = out.loc[mask, "Voter_Percentage"] * 100.0
-
-
     # If values look like proportions (0-1), convert to percent
     mask = out["Voter_Percentage"].between(0, 1, inclusive="both")
     out.loc[mask, "Voter_Percentage"] = out.loc[mask, "Voter_Percentage"] * 100.0
-
 
     # Keep only target years and non-null turnout
     out = out[out["Year"].isin(YEARS)].copy()
@@ -301,18 +325,22 @@ def normalise_state_name(s: str) -> str:
 
 def extract_party_map_from_nara_html(html: str) -> dict[str, str]:
     """
-    Tries to map candidate names to party letters, based on patterns like:
-    President John Doe [D]
-    Main Opponent Jane Roe [R]
+    Map candidate names to party letters, from lines like:
+    President Donald J. Trump [R]
+    Main Opponent Kamala D. Harris [D]
+    Vice President JD Vance [R]
+    V.P. Opponent Tim Walz [D]
     """
     party_map: dict[str, str] = {}
 
-    for m in re.finditer(r"(President|Main Opponent)\s+([^<\[]+?)\s*\[([A-Z])\]", html):
+    pattern = r"(President|Main Opponent|Vice President|V\.P\.\s*Opponent)\s+([^\[]+?)\s*\[([A-Z])\]"
+    for m in re.finditer(pattern, html):
         name = m.group(2).strip()
         party = m.group(3).strip()
         party_map[name] = party
 
     return party_map
+
 
 
 def party_from_candidate_label(label: str, party_map: dict[str, str], year: int) -> str:
@@ -324,6 +352,16 @@ def party_from_candidate_label(label: str, party_map: dict[str, str], year: int)
     # First try party_map extracted from page
     for name, party in party_map.items():
         if name.lower() in label_l:
+            if party == "D":
+                return "Democratic"
+            if party == "R":
+                return "Republican"
+            return "Other"
+
+    # Fallback: match by last name token
+    for name, party in party_map.items():
+        ln = last_name_token(name).lower()
+        if ln and ln in label_l:
             if party == "D":
                 return "Democratic"
             if party == "R":
@@ -355,7 +393,7 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         url = NARA_URLS[year]
 
         # Use requests so we can set User-Agent and also reuse your caching pattern
-        html = fetch_text(url, CACHE_DIR / f"nara_{year}.html")
+        html = fetch_text(url, CACHE_DIR / f"nara_{year}.html", force_refresh=True)
 
         party_map = extract_party_map_from_nara_html(html)
 
@@ -405,6 +443,51 @@ def load_state_winners_from_nara() -> pd.DataFrame:
         # Drop totals / empty rows
         df = df[df["State"].str.len() > 0]
         df = df[~df["State"].str.lower().isin(["total"])]
+
+        # 1) First try the modern format: candidate names appear in column headers (2024 page is like this).
+        # Build surname tokens from party_map names, then keep columns that contain those tokens.
+        surname_tokens = [last_name_token(n) for n in party_map.keys() if last_name_token(n)]
+        surname_tokens = [t for t in surname_tokens if t]  # remove empties
+
+        name_cols: list[str] = []
+        for c in df.columns:
+            c_str = str(c)
+            c_l = c_str.lower()
+            if any(tok.lower() in c_l for tok in surname_tokens):
+                name_cols.append(c)
+
+        # Keep only columns with numeric-like content
+        candidate_cols: list[str] = []
+        for c in name_cols:
+            sample = df[c].head(20).astype(str)
+            hits = sample.str.contains(r"^\s*[\d,]+(?:\.\d+)?\s*$|^\s*-\s*$|^\s*—\s*$").mean()
+            if hits >= 0.5:
+                candidate_cols.append(c)
+
+        if candidate_cols:
+            # Convert candidate columns to ints
+            for c in candidate_cols:
+                df[c] = df[c].apply(clean_int_cell)
+
+            # Keep only canonical jurisdictions and collapse district rows (ME/NE)
+            df = df[df["State"].isin(JURISDICTIONS_51)].copy()
+            grouped = df.groupby("State", as_index=False)[candidate_cols].sum()
+
+            grouped["Winner_Label"] = grouped[candidate_cols].idxmax(axis=1)
+            grouped["Winning_Party"] = grouped["Winner_Label"].apply(
+                lambda x: party_from_candidate_label(str(x), party_map, year)
+            )
+            grouped["Year"] = year
+
+            out = grouped[["State", "Year", "Winning_Party"]].copy()
+            out = out.drop_duplicates(subset=["State", "Year"])
+
+            for _, r in out.iterrows():
+                rows.append({"State": r["State"], "Year": int(r["Year"]), "Winning_Party": r["Winning_Party"]})
+
+            # Done for this year
+            continue
+
 
         # Special handling for NARA tables that use "For President" / "For Vice-President"
         # These tables represent TWO tickets (ticket A and ticket B) as paired columns.
