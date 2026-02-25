@@ -4,15 +4,111 @@
   <meta charset="utf-8">
   <title>CSV WDC</title>
   <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    input { padding: 8px; font-size: 14px; }
+    button { padding: 8px 12px; font-size: 14px; margin-left: 8px; }
+    .hint { color: #444; font-size: 13px; }
+    .error { color: #b00020; white-space: pre-wrap; margin-top: 10px; }
+  </style>
 </head>
 <body>
   <h3>CSV Web Data Connector</h3>
-  <p>Paste your raw CSV URL and click Connect.</p>
+  <p class="hint">
+    Paste your GitHub CSV link (blob or raw) and click Connect.
+  </p>
 
-  <input id="csvUrl" style="width: 90%;" placeholder="https://raw.githubusercontent.com/.../data/election_bars_long.csv">
+  <input id="csvUrl" style="width: 92%;"
+         placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/election_bars_long.csv">
   <button id="connectBtn">Connect</button>
 
+  <div id="msg" class="error"></div>
+
   <script>
+    const DEFAULT_BLOB_URL =
+      "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/election_bars_long.csv";
+
+    // Pre-fill for convenience.
+    document.getElementById("csvUrl").value = DEFAULT_BLOB_URL;
+
+    function toRawGithubUrl(url) {
+      const u = (url || "").trim();
+      if (!u) return u;
+
+      // Already raw
+      if (u.includes("raw.githubusercontent.com/")) return u;
+
+      // github.com/<owner>/<repo>/raw/<branch>/path...
+      // github.com/<owner>/<repo>/blob/<branch>/path...
+      const m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(blob|raw)\/([^\/]+)\/(.+)$/i);
+      if (m) {
+        const owner = m[1];
+        const repo = m[2];
+        const branch = m[4];
+        const path = m[5];
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+      }
+
+      return u;
+    }
+
+    // Minimal CSV parser that supports quoted fields and commas inside quotes.
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i + 1];
+
+        if (inQuotes) {
+          if (c === '"' && next === '"') { // escaped quote
+            field += '"';
+            i++;
+          } else if (c === '"') {
+            inQuotes = false;
+          } else {
+            field += c;
+          }
+        } else {
+          if (c === '"') {
+            inQuotes = true;
+          } else if (c === ",") {
+            row.push(field);
+            field = "";
+          } else if (c === "\n") {
+            row.push(field);
+            field = "";
+            // Ignore completely empty trailing lines
+            if (!(row.length === 1 && row[0].trim() === "")) {
+              rows.push(row);
+            }
+            row = [];
+          } else if (c === "\r") {
+            // ignore
+          } else {
+            field += c;
+          }
+        }
+      }
+
+      // last field/row
+      if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        if (!(row.length === 1 && row[0].trim() === "")) {
+          rows.push(row);
+        }
+      }
+
+      return rows;
+    }
+
+    function showError(msg) {
+      document.getElementById("msg").textContent = msg || "";
+    }
+
     const connector = tableau.makeConnector();
 
     connector.getSchema = function(schemaCallback) {
@@ -33,40 +129,78 @@
     };
 
     connector.getData = async function(table, doneCallback) {
-      const url = tableau.connectionData;
-      const response = await fetch(url);
-      const text = await response.text();
+      try {
+        showError("");
 
-      const lines = text.trim().split("\n");
-      const header = lines[0].split(",");
-      const idx = {
-        State: header.indexOf("State"),
-        Year: header.indexOf("Year"),
-        Voter_Percentage: header.indexOf("Voter_Percentage"),
-        Winning_Party: header.indexOf("Winning_Party")
-      };
+        const original = tableau.connectionData || "";
+        const url = toRawGithubUrl(original);
 
-      const rows = [];
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(",");
-        rows.push({
-          State: parts[idx.State],
-          Year: parseInt(parts[idx.Year], 10),
-          Voter_Percentage: parseFloat(parts[idx.Voter_Percentage]),
-          Winning_Party: parts[idx.Winning_Party]
-        });
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Fetch failed (${response.status}): ${response.statusText}\nURL: ${url}`);
+        }
+
+        const text = await response.text();
+        const parsed = parseCsv(text.trim());
+
+        if (!parsed.length) {
+          throw new Error(`CSV appears empty.\nURL: ${url}`);
+        }
+
+        const header = parsed[0].map(h => (h || "").trim());
+        const idx = {
+          State: header.indexOf("State"),
+          Year: header.indexOf("Year"),
+          Voter_Percentage: header.indexOf("Voter_Percentage"),
+          Winning_Party: header.indexOf("Winning_Party")
+        };
+
+        const missingCols = Object.entries(idx).filter(([, v]) => v === -1).map(([k]) => k);
+        if (missingCols.length) {
+          throw new Error(
+            `CSV is missing required columns: ${missingCols.join(", ")}\n` +
+            `Found columns: ${header.join(", ")}\nURL: ${url}`
+          );
+        }
+
+        const rows = [];
+        for (let i = 1; i < parsed.length; i++) {
+          const parts = parsed[i];
+          if (!parts || parts.length === 0) continue;
+
+          const yearVal = parseInt(parts[idx.Year], 10);
+          const vpVal = parseFloat(parts[idx.Voter_Percentage]);
+
+          rows.push({
+            State: (parts[idx.State] || "").trim(),
+            Year: Number.isFinite(yearVal) ? yearVal : null,
+            Voter_Percentage: Number.isFinite(vpVal) ? vpVal : null,
+            Winning_Party: (parts[idx.Winning_Party] || "").trim()
+          });
+        }
+
+        table.appendRows(rows);
+        doneCallback();
+      } catch (e) {
+        showError(String(e && e.message ? e.message : e));
+        doneCallback();
       }
-
-      table.appendRows(rows);
-      doneCallback();
     };
 
     tableau.registerConnector(connector);
 
     document.getElementById("connectBtn").addEventListener("click", function() {
-      const url = document.getElementById("csvUrl").value.trim();
+      showError("");
+
+      const inputUrl = document.getElementById("csvUrl").value.trim();
+      if (!inputUrl) {
+        showError("Please enter a CSV URL.");
+        return;
+      }
+
       tableau.connectionName = "Election Bars Long CSV";
-      tableau.connectionData = url;
+      // Store what the user pasted; getData will normalize to raw.
+      tableau.connectionData = inputUrl;
       tableau.submit();
     });
   </script>
