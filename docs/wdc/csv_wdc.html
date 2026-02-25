@@ -2,44 +2,56 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>CSV WDC</title>
+  <title>US Election CSV WDC</title>
   <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
-    input { padding: 8px; font-size: 14px; }
-    button { padding: 8px 12px; font-size: 14px; margin-left: 8px; }
-    .hint { color: #444; font-size: 13px; }
+    input { padding: 8px; font-size: 14px; width: 96%; }
+    button { padding: 8px 12px; font-size: 14px; margin-top: 8px; }
+    .hint { color: #444; font-size: 13px; margin-top: 8px; }
     .error { color: #b00020; white-space: pre-wrap; margin-top: 10px; }
+    label { display:block; margin-top: 10px; font-weight: 600; }
   </style>
 </head>
 <body>
-  <h3>CSV Web Data Connector</h3>
+  <h3>US Election History (Tableau WDC)</h3>
+
   <p class="hint">
-    Paste your GitHub CSV link (blob or raw) and click Connect.
+    This connector loads two tables:
+    <br>1) election_bars_long (State, Year, Voter_Percentage, Winning_Party)
+    <br>2) state_grid (State, X, Y)
+    <br><br>
+    Paste GitHub blob or raw URLs. Blob URLs will be converted to raw automatically.
   </p>
 
-  <input id="csvUrl" style="width: 92%;"
-         placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/election_bars_long.csv">
-  <button id="connectBtn">Connect</button>
+  <label>Election CSV URL</label>
+  <input id="electionUrl" placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/election_bars_long.csv">
 
+  <label>State Grid CSV URL</label>
+  <input id="gridUrl" placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/state_grid.csv">
+
+  <button id="connectBtn">Connect</button>
   <div id="msg" class="error"></div>
 
   <script>
-    const DEFAULT_BLOB_URL =
+    const DEFAULT_ELECTION_BLOB =
       "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/election_bars_long.csv";
+    const DEFAULT_GRID_BLOB =
+      "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/state_grid.csv";
 
-    // Pre-fill for convenience.
-    document.getElementById("csvUrl").value = DEFAULT_BLOB_URL;
+    document.getElementById("electionUrl").value = DEFAULT_ELECTION_BLOB;
+    document.getElementById("gridUrl").value = DEFAULT_GRID_BLOB;
+
+    function showError(msg) {
+      document.getElementById("msg").textContent = msg || "";
+    }
 
     function toRawGithubUrl(url) {
       const u = (url || "").trim();
       if (!u) return u;
 
-      // Already raw
       if (u.includes("raw.githubusercontent.com/")) return u;
 
-      // github.com/<owner>/<repo>/raw/<branch>/path...
-      // github.com/<owner>/<repo>/blob/<branch>/path...
       const m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(blob|raw)\/([^\/]+)\/(.+)$/i);
       if (m) {
         const owner = m[1];
@@ -48,11 +60,10 @@
         const path = m[5];
         return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
       }
-
       return u;
     }
 
-    // Minimal CSV parser that supports quoted fields and commas inside quotes.
+    // CSV parser with quoted-field support
     function parseCsv(text) {
       const rows = [];
       let row = [];
@@ -64,27 +75,15 @@
         const next = text[i + 1];
 
         if (inQuotes) {
-          if (c === '"' && next === '"') { // escaped quote
-            field += '"';
-            i++;
-          } else if (c === '"') {
-            inQuotes = false;
-          } else {
-            field += c;
-          }
+          if (c === '"' && next === '"') { field += '"'; i++; }
+          else if (c === '"') inQuotes = false;
+          else field += c;
         } else {
-          if (c === '"') {
-            inQuotes = true;
-          } else if (c === ",") {
-            row.push(field);
-            field = "";
-          } else if (c === "\n") {
-            row.push(field);
-            field = "";
-            // Ignore completely empty trailing lines
-            if (!(row.length === 1 && row[0].trim() === "")) {
-              rows.push(row);
-            }
+          if (c === '"') inQuotes = true;
+          else if (c === ",") { row.push(field); field = ""; }
+          else if (c === "\n") {
+            row.push(field); field = "";
+            if (!(row.length === 1 && row[0].trim() === "")) rows.push(row);
             row = [];
           } else if (c === "\r") {
             // ignore
@@ -93,94 +92,136 @@
           }
         }
       }
-
-      // last field/row
       if (field.length > 0 || row.length > 0) {
         row.push(field);
-        if (!(row.length === 1 && row[0].trim() === "")) {
-          rows.push(row);
-        }
+        if (!(row.length === 1 && row[0].trim() === "")) rows.push(row);
       }
-
       return rows;
     }
 
-    function showError(msg) {
-      document.getElementById("msg").textContent = msg || "";
+    function headerIndexMap(header) {
+      const idx = {};
+      for (let i = 0; i < header.length; i++) {
+        idx[header[i]] = i;
+      }
+      return idx;
+    }
+
+    async function fetchAndParse(url) {
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) throw new Error(`Fetch failed (${resp.status}): ${resp.statusText}\nURL: ${url}`);
+      const text = await resp.text();
+      const parsed = parseCsv(text.trim());
+      if (!parsed.length) throw new Error(`CSV appears empty.\nURL: ${url}`);
+      return parsed;
     }
 
     const connector = tableau.makeConnector();
 
     connector.getSchema = function(schemaCallback) {
-      const cols = [
+      const electionCols = [
         { id: "State", dataType: tableau.dataTypeEnum.string },
         { id: "Year", dataType: tableau.dataTypeEnum.int },
         { id: "Voter_Percentage", dataType: tableau.dataTypeEnum.float },
         { id: "Winning_Party", dataType: tableau.dataTypeEnum.string }
       ];
 
-      const tableSchema = {
-        id: "election_bars_long",
-        alias: "Election Bars Long",
-        columns: cols
-      };
+      const gridCols = [
+        { id: "State", dataType: tableau.dataTypeEnum.string },
+        { id: "X", dataType: tableau.dataTypeEnum.int },
+        { id: "Y", dataType: tableau.dataTypeEnum.int }
+      ];
 
-      schemaCallback([tableSchema]);
+      const tables = [
+        { id: "election_bars_long", alias: "Election Bars Long", columns: electionCols },
+        { id: "state_grid", alias: "State Grid", columns: gridCols }
+      ];
+
+      schemaCallback(tables);
     };
 
     connector.getData = async function(table, doneCallback) {
       try {
         showError("");
 
-        const original = tableau.connectionData || "";
-        const url = toRawGithubUrl(original);
+        const cfg = JSON.parse(tableau.connectionData || "{}");
+        const electionUrl = toRawGithubUrl(cfg.electionUrl || "");
+        const gridUrl = toRawGithubUrl(cfg.gridUrl || "");
 
-        const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`Fetch failed (${response.status}): ${response.statusText}\nURL: ${url}`);
+        if (!electionUrl || !gridUrl) {
+          throw new Error("Missing URLs. Please re-open the connector and click Connect again.");
         }
 
-        const text = await response.text();
-        const parsed = parseCsv(text.trim());
+        if (table.tableInfo.id === "election_bars_long") {
+          const parsed = await fetchAndParse(electionUrl);
+          const header = parsed[0].map(h => (h || "").trim());
+          const idx = headerIndexMap(header);
 
-        if (!parsed.length) {
-          throw new Error(`CSV appears empty.\nURL: ${url}`);
+          const required = ["State","Year","Voter_Percentage","Winning_Party"];
+          const missing = required.filter(c => !(c in idx));
+          if (missing.length) {
+            throw new Error(
+              `Election CSV missing columns: ${missing.join(", ")}\n` +
+              `Found columns: ${header.join(", ")}\nURL: ${electionUrl}`
+            );
+          }
+
+          const rows = [];
+          for (let i = 1; i < parsed.length; i++) {
+            const parts = parsed[i];
+            if (!parts || parts.length === 0) continue;
+
+            const yearVal = parseInt((parts[idx.Year] || "").trim(), 10);
+            const vpVal = parseFloat((parts[idx.Voter_Percentage] || "").trim());
+
+            rows.push({
+              State: (parts[idx.State] || "").trim(),
+              Year: Number.isFinite(yearVal) ? yearVal : null,
+              Voter_Percentage: Number.isFinite(vpVal) ? vpVal : null,
+              Winning_Party: (parts[idx.Winning_Party] || "").trim()
+            });
+          }
+
+          table.appendRows(rows);
+          doneCallback();
+          return;
         }
 
-        const header = parsed[0].map(h => (h || "").trim());
-        const idx = {
-          State: header.indexOf("State"),
-          Year: header.indexOf("Year"),
-          Voter_Percentage: header.indexOf("Voter_Percentage"),
-          Winning_Party: header.indexOf("Winning_Party")
-        };
+        if (table.tableInfo.id === "state_grid") {
+          const parsed = await fetchAndParse(gridUrl);
+          const header = parsed[0].map(h => (h || "").trim());
+          const idx = headerIndexMap(header);
 
-        const missingCols = Object.entries(idx).filter(([, v]) => v === -1).map(([k]) => k);
-        if (missingCols.length) {
-          throw new Error(
-            `CSV is missing required columns: ${missingCols.join(", ")}\n` +
-            `Found columns: ${header.join(", ")}\nURL: ${url}`
-          );
+          const required = ["State","X","Y"];
+          const missing = required.filter(c => !(c in idx));
+          if (missing.length) {
+            throw new Error(
+              `State grid CSV missing columns: ${missing.join(", ")}\n` +
+              `Found columns: ${header.join(", ")}\nURL: ${gridUrl}`
+            );
+          }
+
+          const rows = [];
+          for (let i = 1; i < parsed.length; i++) {
+            const parts = parsed[i];
+            if (!parts || parts.length === 0) continue;
+
+            const xVal = parseInt((parts[idx.X] || "").trim(), 10);
+            const yVal = parseInt((parts[idx.Y] || "").trim(), 10);
+
+            rows.push({
+              State: (parts[idx.State] || "").trim(),
+              X: Number.isFinite(xVal) ? xVal : null,
+              Y: Number.isFinite(yVal) ? yVal : null
+            });
+          }
+
+          table.appendRows(rows);
+          doneCallback();
+          return;
         }
 
-        const rows = [];
-        for (let i = 1; i < parsed.length; i++) {
-          const parts = parsed[i];
-          if (!parts || parts.length === 0) continue;
-
-          const yearVal = parseInt(parts[idx.Year], 10);
-          const vpVal = parseFloat(parts[idx.Voter_Percentage]);
-
-          rows.push({
-            State: (parts[idx.State] || "").trim(),
-            Year: Number.isFinite(yearVal) ? yearVal : null,
-            Voter_Percentage: Number.isFinite(vpVal) ? vpVal : null,
-            Winning_Party: (parts[idx.Winning_Party] || "").trim()
-          });
-        }
-
-        table.appendRows(rows);
-        doneCallback();
+        throw new Error(`Unknown table requested: ${table.tableInfo.id}`);
       } catch (e) {
         showError(String(e && e.message ? e.message : e));
         doneCallback();
@@ -192,15 +233,16 @@
     document.getElementById("connectBtn").addEventListener("click", function() {
       showError("");
 
-      const inputUrl = document.getElementById("csvUrl").value.trim();
-      if (!inputUrl) {
-        showError("Please enter a CSV URL.");
+      const electionUrl = document.getElementById("electionUrl").value.trim();
+      const gridUrl = document.getElementById("gridUrl").value.trim();
+
+      if (!electionUrl || !gridUrl) {
+        showError("Please enter both the election CSV URL and the state grid CSV URL.");
         return;
       }
 
-      tableau.connectionName = "Election Bars Long CSV";
-      // Store what the user pasted; getData will normalize to raw.
-      tableau.connectionData = inputUrl;
+      tableau.connectionName = "US Election History (CSV)";
+      tableau.connectionData = JSON.stringify({ electionUrl, gridUrl });
       tableau.submit();
     });
   </script>
