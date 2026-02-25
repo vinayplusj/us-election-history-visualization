@@ -2,14 +2,14 @@ State,State_Abv,X,Y
 Washington,WA,1,7
 Oregon,OR,1,6
 California,CA,1,5
-Idaho,ID,2,6
-Nevada,NV,2,5
+Idaho,ID,2,7
+Nevada,NV,2,6
 Arizona,AZ,2,4
-Utah,UT,3,5
+Utah,UT,2,5
 Montana,MT,3,7
 Wyoming,WY,3,6
-Colorado,CO,3,4
-New Mexico,NM,3,3
+Colorado,CO,3,5
+New Mexico,NM,3,4
 North Dakota,ND,4,7
 South Dakota,SD,4,6
 Nebraska,NE,4,5
@@ -21,32 +21,32 @@ Iowa,IA,5,6
 Missouri,MO,5,5
 Arkansas,AR,5,4
 Louisiana,LA,5,3
-Wisconsin,WI,6,7
-Illinois,IL,6,6
+Wisconsin,WI,6,8
+Illinois,IL,6,7
 Kentucky,KY,6,5
 Tennessee,TN,6,4
 Mississippi,MS,6,3
 Michigan,MI,7,7
-Indiana,IN,7,6
-Ohio,OH,7,5
+Indiana,IN,6,6
+Ohio,OH,7,6
 Alabama,AL,7,3
 Georgia,GA,8,3
-Florida,FL,8,2
-West Virginia,WV,8,5
-Virginia,VA,9,5
-North Carolina,NC,9,4
-South Carolina,SC,9,3
-Pennsylvania,PA,9,6
-New York,NY,10,7
-Vermont,VT,11,8
-New Hampshire,NH,12,8
-Maine,ME,13,8
-Massachusetts,MA,12,7
-Rhode Island,RI,13,7
-Connecticut,CT,12,6
-New Jersey,NJ,11,6
-Delaware,DE,12,5
-Maryland,MD,11,5
-District of Columbia,DC,12,4
-Alaska,AK,1,2
-Hawaii,HI,2,2
+Florida,FL,9,2
+West Virginia,WV,7,5
+Virginia,VA,8,5
+North Carolina,NC,7,4
+South Carolina,SC,8,4
+Pennsylvania,PA,8,6
+New York,NY,9,7
+Vermont,VT,10,8
+New Hampshire,NH,11,8
+Maine,ME,11,9
+Massachusetts,MA,10,7
+Rhode Island,RI,11,6
+Connecticut,CT,10,6
+New Jersey,NJ,9,6
+Delaware,DE,10,5
+Maryland,MD,9,5
+District of Columbia,DC,9,4
+Alaska,AK,1,9
+Hawaii,HI,2,1
