@@ -2,26 +2,28 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>US Election CSV WDC</title>
+  <title>US Election History (Tableau WDC)</title>
   <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    body { font-family: Tahoma, NotoSans, Verdana, Source Sans Pro, system-ui, -apple-system ; margin: 20px; }
     input { padding: 8px; font-size: 14px; width: 96%; }
-    button { padding: 8px 12px; font-size: 14px; margin-top: 8px; }
-    .hint { color: #444; font-size: 13px; margin-top: 8px; }
-    .error { color: #b00020; white-space: pre-wrap; margin-top: 10px; }
-    label { display:block; margin-top: 10px; font-weight: 600; }
+    button { padding: 8px 12px; font-size: 14px; margin-top: 10px; }
+    .hint { color: #444; font-size: 13px; margin-top: 8px; line-height: 1.35; }
+    .error { color: #b00020; white-space: pre-wrap; margin-top: 12px; }
+    label { display:block; margin-top: 12px; font-weight: 600; }
+    code { background: #f6f6f6; padding: 2px 4px; border-radius: 4px; }
   </style>
 </head>
 <body>
-  <h3>US Election History (Tableau WDC)</h3>
+  <h3>US Election History (CSV Web Data Connector)</h3>
 
   <p class="hint">
-    This connector loads two tables:
-    <br>1) election_bars_long (State, Year, Voter_Percentage, Winning_Party)
-    <br>2) state_grid (State, X, Y)
+    This connector loads three tables:
+    <br>1) <code>election_bars_long</code> (State, Year, Voter_Percentage, Winning_Party)
+    <br>2) <code>state_grid</code> (State, State_Abv, X, Y)  (State_Abv optional)
+    <br>3) <code>year_offsets</code> (Year, x_off)
     <br><br>
-    Paste GitHub blob or raw URLs. Blob URLs will be converted to raw automatically.
+    Paste GitHub <code>blob</code> or <code>raw</code> URLs. Blob URLs will be converted to raw automatically.
   </p>
 
   <label>Election CSV URL</label>
@@ -29,6 +31,9 @@
 
   <label>State Grid CSV URL</label>
   <input id="gridUrl" placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/state_grid.csv">
+
+  <label>Year Offsets CSV URL</label>
+  <input id="offsetsUrl" placeholder="https://github.com/<owner>/<repo>/blob/<branch>/data/year_offsets.csv">
 
   <button id="connectBtn">Connect</button>
   <div id="msg" class="error"></div>
@@ -38,9 +43,12 @@
       "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/election_bars_long.csv";
     const DEFAULT_GRID_BLOB =
       "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/state_grid.csv";
+    const DEFAULT_OFFSETS_BLOB =
+      "https://github.com/vinayplusj/us-election-history-visualization/blob/main/data/year_offsets.csv";
 
     document.getElementById("electionUrl").value = DEFAULT_ELECTION_BLOB;
     document.getElementById("gridUrl").value = DEFAULT_GRID_BLOB;
+    document.getElementById("offsetsUrl").value = DEFAULT_OFFSETS_BLOB;
 
     function showError(msg) {
       document.getElementById("msg").textContent = msg || "";
@@ -92,6 +100,7 @@
           }
         }
       }
+
       if (field.length > 0 || row.length > 0) {
         row.push(field);
         if (!(row.length === 1 && row[0].trim() === "")) rows.push(row);
@@ -101,9 +110,7 @@
 
     function headerIndexMap(header) {
       const idx = {};
-      for (let i = 0; i < header.length; i++) {
-        idx[header[i]] = i;
-      }
+      for (let i = 0; i < header.length; i++) idx[header[i]] = i;
       return idx;
     }
 
@@ -114,6 +121,16 @@
       const parsed = parseCsv(text.trim());
       if (!parsed.length) throw new Error(`CSV appears empty.\nURL: ${url}`);
       return parsed;
+    }
+
+    function parseIntOrNull(v) {
+      const n = parseInt((v || "").trim(), 10);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function parseFloatOrNull(v) {
+      const n = parseFloat((v || "").trim());
+      return Number.isFinite(n) ? n : null;
     }
 
     const connector = tableau.makeConnector();
@@ -128,13 +145,20 @@
 
       const gridCols = [
         { id: "State", dataType: tableau.dataTypeEnum.string },
+        { id: "State_Abv", dataType: tableau.dataTypeEnum.string },
         { id: "X", dataType: tableau.dataTypeEnum.int },
         { id: "Y", dataType: tableau.dataTypeEnum.int }
       ];
 
+      const offsetsCols = [
+        { id: "Year", dataType: tableau.dataTypeEnum.int },
+        { id: "x_off", dataType: tableau.dataTypeEnum.float }
+      ];
+
       const tables = [
         { id: "election_bars_long", alias: "Election Bars Long", columns: electionCols },
-        { id: "state_grid", alias: "State Grid", columns: gridCols }
+        { id: "state_grid", alias: "State Grid", columns: gridCols },
+        { id: "year_offsets", alias: "Year Offsets", columns: offsetsCols }
       ];
 
       schemaCallback(tables);
@@ -147,11 +171,13 @@
         const cfg = JSON.parse(tableau.connectionData || "{}");
         const electionUrl = toRawGithubUrl(cfg.electionUrl || "");
         const gridUrl = toRawGithubUrl(cfg.gridUrl || "");
+        const offsetsUrl = toRawGithubUrl(cfg.offsetsUrl || "");
 
-        if (!electionUrl || !gridUrl) {
+        if (!electionUrl || !gridUrl || !offsetsUrl) {
           throw new Error("Missing URLs. Please re-open the connector and click Connect again.");
         }
 
+        // ---- election_bars_long ----
         if (table.tableInfo.id === "election_bars_long") {
           const parsed = await fetchAndParse(electionUrl);
           const header = parsed[0].map(h => (h || "").trim());
@@ -171,13 +197,10 @@
             const parts = parsed[i];
             if (!parts || parts.length === 0) continue;
 
-            const yearVal = parseInt((parts[idx.Year] || "").trim(), 10);
-            const vpVal = parseFloat((parts[idx.Voter_Percentage] || "").trim());
-
             rows.push({
               State: (parts[idx.State] || "").trim(),
-              Year: Number.isFinite(yearVal) ? yearVal : null,
-              Voter_Percentage: Number.isFinite(vpVal) ? vpVal : null,
+              Year: parseIntOrNull(parts[idx.Year]),
+              Voter_Percentage: parseFloatOrNull(parts[idx.Voter_Percentage]),
               Winning_Party: (parts[idx.Winning_Party] || "").trim()
             });
           }
@@ -187,6 +210,7 @@
           return;
         }
 
+        // ---- state_grid ----
         if (table.tableInfo.id === "state_grid") {
           const parsed = await fetchAndParse(gridUrl);
           const header = parsed[0].map(h => (h || "").trim());
@@ -201,19 +225,54 @@
             );
           }
 
+          const hasAbv = ("State_Abv" in idx);
+
           const rows = [];
           for (let i = 1; i < parsed.length; i++) {
             const parts = parsed[i];
             if (!parts || parts.length === 0) continue;
 
-            const xVal = parseInt((parts[idx.X] || "").trim(), 10);
-            const yVal = parseInt((parts[idx.Y] || "").trim(), 10);
+            const state = (parts[idx.State] || "").trim();
+            if (!state) continue;
 
             rows.push({
-              State: (parts[idx.State] || "").trim(),
-              X: Number.isFinite(xVal) ? xVal : null,
-              Y: Number.isFinite(yVal) ? yVal : null
+              State: state,
+              State_Abv: hasAbv ? (parts[idx.State_Abv] || "").trim() : null,
+              X: parseIntOrNull(parts[idx.X]),
+              Y: parseIntOrNull(parts[idx.Y])
             });
+          }
+
+          table.appendRows(rows);
+          doneCallback();
+          return;
+        }
+
+        // ---- year_offsets ----
+        if (table.tableInfo.id === "year_offsets") {
+          const parsed = await fetchAndParse(offsetsUrl);
+          const header = parsed[0].map(h => (h || "").trim());
+          const idx = headerIndexMap(header);
+
+          const required = ["Year","x_off"];
+          const missing = required.filter(c => !(c in idx));
+          if (missing.length) {
+            throw new Error(
+              `Year offsets CSV missing columns: ${missing.join(", ")}\n` +
+              `Found columns: ${header.join(", ")}\nURL: ${offsetsUrl}`
+            );
+          }
+
+          const rows = [];
+          for (let i = 1; i < parsed.length; i++) {
+            const parts = parsed[i];
+            if (!parts || parts.length === 0) continue;
+
+            const yr = parseIntOrNull(parts[idx.Year]);
+            const xo = parseFloatOrNull(parts[idx.x_off]);
+            if (yr === null) continue;
+
+            rows.push({ Year: yr, x_off: xo });
           }
 
           table.appendRows(rows);
@@ -235,14 +294,15 @@
 
       const electionUrl = document.getElementById("electionUrl").value.trim();
       const gridUrl = document.getElementById("gridUrl").value.trim();
+      const offsetsUrl = document.getElementById("offsetsUrl").value.trim();
 
-      if (!electionUrl || !gridUrl) {
-        showError("Please enter both the election CSV URL and the state grid CSV URL.");
+      if (!electionUrl || !gridUrl || !offsetsUrl) {
+        showError("Please enter all three CSV URLs.");
         return;
       }
 
-      tableau.connectionName = "US Election History (CSV)";
-      tableau.connectionData = JSON.stringify({ electionUrl, gridUrl });
+      tableau.connectionName = "US Election History (3 CSVs)";
+      tableau.connectionData = JSON.stringify({ electionUrl, gridUrl, offsetsUrl });
       tableau.submit();
     });
   </script>
