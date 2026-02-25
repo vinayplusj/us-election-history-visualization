@@ -40,7 +40,13 @@ FALLBACK_YEAR_PARTY_HINTS = {
         "Republican": ["Trump", "Vance", "Republican"],
     },
 }
-
+# Extra name tokens used to detect candidate-name header rows on older NARA pages.
+EXTRA_YEAR_NAME_TOKENS = {
+    2008: ["Biden", "Palin"],
+    2012: ["Biden", "Ryan"],
+    2016: ["Pence", "Kaine"],
+    2020: ["Harris", "Pence"],
+}
 
 # Turnout sources (VEP turnout by state)
 TURNOUT_URL_1980_2022 = "https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv"
@@ -161,6 +167,49 @@ def normalise_turnout_state_name(s: str) -> str:
 
     return s2
 
+def promote_first_row_candidates(df: pd.DataFrame, state_col: str, year: int) -> pd.DataFrame:
+    """
+    Some NARA pages (including 2016) can render candidate names as the first data row under
+    generic columns like 'For President' / 'For President.1'. Promote that first row into
+    the header when it contains known candidate tokens for that election year.
+    """
+    if df.empty:
+        return df
+
+    first_idx = df.index[0]
+    row_text = " ".join([str(v) for v in df.loc[first_idx].tolist()]).lower()
+
+    tokens = []
+    for party_tokens in FALLBACK_YEAR_PARTY_HINTS.get(year, {}).values():
+        tokens.extend(party_tokens)
+    tokens.extend(EXTRA_YEAR_NAME_TOKENS.get(year, []))
+
+    tokens_l = [t.lower() for t in tokens if t]
+    looks_like_candidates = any(t in row_text for t in tokens_l)
+
+    if not looks_like_candidates:
+        return df
+
+    new_cols: list[str] = []
+    for c in df.columns:
+        if c == state_col:
+            new_cols.append(str(c).strip())
+            continue
+
+        base = str(c).strip()
+        cand = str(df.loc[first_idx, c]).strip()
+
+        # Only use it if it looks like a name (letters) and not a number.
+        if re.search(r"[A-Za-z]", cand) and not re.search(r"\d", cand):
+            new_cols.append(f"{base} {cand}".strip())
+        else:
+            new_cols.append(base)
+
+    df2 = df.copy()
+    df2.columns = new_cols
+    df2 = df2.iloc[1:].copy().reset_index(drop=True)
+    return df2
+    
 def promote_first_row_candidates_2024(df: pd.DataFrame, state_col: str) -> pd.DataFrame:
     """
     NARA 2024 can render candidate names as the first data row under columns like
@@ -637,9 +686,12 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
 
         df = target.copy()
         state_col = find_state_col(df)
-
+        
         if year == 2024:
             df = promote_first_row_candidates_2024(df, state_col=state_col)
+        else:
+            # Older pages (notably 2016) can also need first-row header promotion.
+            df = promote_first_row_candidates(df, state_col=state_col, year=year)
 
 
         df[state_col] = df[state_col].astype(str).str.strip()
@@ -657,7 +709,11 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
         has_for_pres = any(c == "for president" or c.startswith("for president") for c in cols_l)
         has_for_vp = any(c in {"for vice-president", "for vice president"} or c.startswith("for vice") for c in cols_l)
 
-        if year != 2024 and has_for_pres and has_for_vp:
+        # Only use the ticket-branch if we still have generic For President columns without candidate names.
+        generic_for_pres = any(c in {"for president", "for president.1"} for c in cols_l)
+        generic_for_vp = any(c in {"for vice-president", "for vice president", "for vice-president.1", "for vice president.1"} for c in cols_l)
+        
+        if year != 2024 and generic_for_pres and generic_for_vp:
 
             # Find the paired ticket columns
             pres_a = None
