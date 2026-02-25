@@ -1,0 +1,50 @@
+name: Build MEDSL state party votes
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/build_state_party_votes_medsl.py"
+      - ".github/workflows/build-medsl-votes.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-medsl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests
+
+      - name: Build MEDSL state party votes CSV
+        env:
+          FORCE_REFRESH: "true"
+        run: |
+          python -u scripts/build_state_party_votes_medsl.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/state_party_votes_long_medsl_2004_2024.csv sources_cache/medsl_dv_dataset_meta.json || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Build MEDSL state party votes (2004–2024)"
+          git push
