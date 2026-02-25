@@ -1,3 +1,5 @@
 WIP
 
-Currently, the data pipeline is up and running. Tableau dashboard to be hosted on Github pages.
+Currently, the data pipeline is up and running.  
+
+[Version 1 of the Tableau dashboard is ready](https://vinayplusj.github.io/us-election-history-visualization/)
