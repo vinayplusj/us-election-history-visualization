@@ -6,7 +6,7 @@ import re
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
-
+import zipfile
 import pandas as pd
 import requests
 
@@ -148,14 +148,19 @@ def classify_party_from_candidate(row: pd.Series, year: int, candidate_col: str)
     return None
 
 
-def find_medsl_main_csv_file_id(dataset_json: dict) -> Tuple[int, str]:
+def find_medsl_main_datafile_id(dataset_json: dict) -> Tuple[int, str]:
     """
-    Finds a likely "main" CSV datafile in the Dataverse dataset by choosing the largest CSV.
+    Find the most likely "main" data file in the Dataverse dataset.
+
+    Dataverse often provides tab-delimited (.tab) instead of .csv.
+    We pick the largest file among preferred extensions: .tab, .tsv, .csv, .zip.
     Returns (datafile_id, filename).
     """
     data = dataset_json.get("data", {})
     latest = data.get("latestVersion", {})
     files = latest.get("files", [])
+
+    preferred_ext = (".tab", ".tsv", ".csv", ".zip")
 
     best_id: Optional[int] = None
     best_name: str = ""
@@ -164,16 +169,13 @@ def find_medsl_main_csv_file_id(dataset_json: dict) -> Tuple[int, str]:
     for f in files:
         df = f.get("dataFile", {})
         file_id = df.get("id")
-        content_type = df.get("contentType", "") or ""
-        filename = df.get("filename", "") or ""
+        filename = (df.get("filename", "") or "").strip()
         filesize = df.get("filesize", -1)
 
-        if file_id is None:
+        if file_id is None or not filename:
             continue
 
-        # Prefer CSV
-        is_csv = content_type.lower().startswith("text/csv") or filename.lower().endswith(".csv")
-        if not is_csv:
+        if not filename.lower().endswith(preferred_ext):
             continue
 
         if isinstance(filesize, int) and filesize > best_size:
@@ -182,23 +184,59 @@ def find_medsl_main_csv_file_id(dataset_json: dict) -> Tuple[int, str]:
             best_size = int(filesize)
 
     if best_id is None:
-        raise ValueError("Could not find a CSV datafile in the MEDSL Dataverse dataset.")
+        # Fallback: pick the largest file in the dataset even if extension is unknown.
+        for f in files:
+            df = f.get("dataFile", {})
+            file_id = df.get("id")
+            filename = (df.get("filename", "") or "").strip()
+            filesize = df.get("filesize", -1)
+            if file_id is None or not filename:
+                continue
+            if isinstance(filesize, int) and filesize > best_size:
+                best_id = int(file_id)
+                best_name = filename
+                best_size = int(filesize)
+
+    if best_id is None:
+        raise ValueError("Could not find a suitable datafile in the MEDSL Dataverse dataset.")
 
     return best_id, best_name
 
 
-def read_medsl_csv(content: bytes) -> pd.DataFrame:
+def read_medsl_table(content: bytes, filename: str) -> pd.DataFrame:
     """
-    Reads the MEDSL datafile content into a DataFrame.
+    Read the downloaded datafile bytes into a DataFrame.
+    Supports .csv, .tsv, .tab, and .zip containing a single csv/tsv/tab.
     """
-    # Dataverse returns the file bytes. It is usually CSV text.
-    # Try utf-8 first, then fall back.
+    name_l = filename.lower()
+
+    def read_text_table(text: str, sep: str) -> pd.DataFrame:
+        return pd.read_csv(StringIO(text), sep=sep)
+
+    # If zipped, extract the first csv/tsv/tab-like file and read it.
+    if name_l.endswith(".zip"):
+        with zipfile.ZipFile(BytesIO(content)) as z:
+            members = [m for m in z.namelist() if m.lower().endswith((".csv", ".tsv", ".tab"))]
+            if not members:
+                raise ValueError("ZIP did not contain a .csv, .tsv, or .tab file.")
+            inner_name = members[0]
+            inner_bytes = z.read(inner_name)
+            return read_medsl_table(inner_bytes, inner_name)
+
+    # Dataverse .tab is tab-delimited text
+    if name_l.endswith(".tab") or name_l.endswith(".tsv"):
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError:
+            text = content.decode("latin-1")
+        return read_text_table(text, sep="\t")
+
+    # Default to CSV
     try:
         text = content.decode("utf-8")
-        return pd.read_csv(StringIO(text))
     except UnicodeDecodeError:
         text = content.decode("latin-1")
-        return pd.read_csv(StringIO(text))
+    return read_text_table(text, sep=",")
 
 
 # ----------------------------
@@ -212,7 +250,7 @@ def build_state_party_votes(force_refresh: bool) -> pd.DataFrame:
     meta = fetch_json(meta_url, meta_cache, force_refresh=force_refresh)
 
     # 2) Find the primary CSV datafile
-    file_id, filename = find_medsl_main_csv_file_id(meta)
+    file_id, filename = find_medsl_main_datafile_id(meta)
     print(f"MEDSL Dataverse file chosen: id={file_id}, filename={filename}")
 
     # 3) Download the datafile (cached)
@@ -220,7 +258,7 @@ def build_state_party_votes(force_refresh: bool) -> pd.DataFrame:
     file_cache = CACHE_DIR / f"medsl_{file_id}_{Path(filename).name}"
     content = fetch_bytes(file_url, file_cache, force_refresh=force_refresh)
 
-    df = read_medsl_csv(content)
+    df = read_medsl_table(content, filename)
     if df.empty:
         raise ValueError("MEDSL datafile loaded but it is empty.")
 
