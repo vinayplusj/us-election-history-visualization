@@ -1,6 +1,81 @@
 <!doctype html>
-<html>
-<head><meta charset="utf-8"><title>US Election History</title></head>
-<body>Placeholder</body>
-</html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>US turnout tile map</title>
+  <style>
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; }
+    header { padding: 16px 20px; border-bottom: 1px solid #e6e6e6; }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    .wrap { padding: 12px 20px; }
+    .viz-wrap { width: 100%; max-width: 1366px; margin: 0 auto; }
+    .note { color: #555; font-size: 13px; margin-top: 10px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Voting Patterns in Recent USA Presidential Elections</h1>
+  </header>
 
+  <div class="wrap">
+    <div class="viz-wrap">
+      <div class="tableauPlaceholder" id="viz_us_turnout_tilemap" style="position: relative;">
+        <noscript>
+          <a href="#">
+            <img alt="US turnout tilemap"
+                 src="https://public.tableau.com/static/images/US/USpresidentialelectionturnout/USturnouttilemap/1_rss.png"
+                 style="border: none; width: 100%;" />
+          </a>
+        </noscript>
+
+        <object class="tableauViz" style="display:none;">
+          <param name="host_url" value="https%3A%2F%2Fpublic.tableau.com%2F" />
+          <param name="embed_code_version" value="3" />
+          <param name="site_root" value="" />
+          <param name="name" value="USpresidentialelectionturnout/USturnouttilemap" />
+          <param name="tabs" value="no" />
+          <param name="toolbar" value="yes" />
+          <param name="static_image" value="https://public.tableau.com/static/images/US/USpresidentialelectionturnout/USturnouttilemap/1.png" />
+          <param name="animate_transition" value="yes" />
+          <param name="display_static_image" value="yes" />
+          <param name="display_spinner" value="yes" />
+          <param name="display_overlay" value="yes" />
+          <param name="display_count" value="yes" />
+          <param name="language" value="en-US" />
+          <param name="filter" value="publish=yes" />
+        </object>
+      </div>
+
+      <div class="note">
+        Turnout is VEP percent from the University of Florida Election Lab datasets.
+        State winners are derived from National Archives Electoral College results.
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    (function () {
+      var divElement = document.getElementById("viz_us_turnout_tilemap");
+      var vizElement = divElement.getElementsByTagName("object")[0];
+
+      function resizeViz() {
+        var w = divElement.offsetWidth;
+        // Keep a 1366:795 aspect ratio (same as Tableau's defaults), but scale to container width.
+        var targetW = Math.min(w, 1366);
+        var targetH = Math.round(targetW * (795 / 1366));
+
+        vizElement.style.width = targetW + "px";
+        vizElement.style.height = targetH + "px";
+      }
+
+      resizeViz();
+      window.addEventListener("resize", resizeViz);
+
+      var scriptElement = document.createElement("script");
+      scriptElement.src = "https://public.tableau.com/javascripts/api/viz_v1.js";
+      vizElement.parentNode.insertBefore(scriptElement, vizElement);
+    })();
+  </script>
+</body>
+</html>
