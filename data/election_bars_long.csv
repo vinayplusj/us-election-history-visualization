@@ -21,27 +21,27 @@ Arkansas,2020,56.17,Republican
 Arkansas,2024,53.48,Republican
 California,2008,60.896359532027645,Democratic
 California,2012,55.15705034094367,Democratic
-California,2016,56.59413083506462,Republican
+California,2016,56.59413083506462,Democratic
 California,2020,68.83,Democratic
 California,2024,62.06,Democratic
 Colorado,2008,70.98028516720277,Democratic
 Colorado,2012,69.90574571611627,Democratic
-Colorado,2016,69.99958457175013,Republican
+Colorado,2016,69.99958457175013,Democratic
 Colorado,2020,76.69,Democratic
 Colorado,2024,73.14,Democratic
 Connecticut,2008,66.60731786138831,Democratic
 Connecticut,2012,61.229932346847605,Democratic
-Connecticut,2016,63.53274702694769,Republican
+Connecticut,2016,63.53274702694769,Democratic
 Connecticut,2020,70.09,Democratic
 Connecticut,2024,67.08,Democratic
 Delaware,2008,65.61957012926672,Democratic
 Delaware,2012,62.510533676049064,Democratic
-Delaware,2016,64.30661027337416,Republican
+Delaware,2016,64.30661027337416,Democratic
 Delaware,2020,68.34,Democratic
 Delaware,2024,67.02,Democratic
 District of Columbia,2008,61.49335689569031,Democratic
 District of Columbia,2012,61.256219164828195,Democratic
-District of Columbia,2016,60.106244315581534,Republican
+District of Columbia,2016,60.106244315581534,Democratic
 District of Columbia,2020,68.87,Democratic
 District of Columbia,2024,63.57,Democratic
 Florida,2008,66.15553498091475,Democratic
@@ -56,7 +56,7 @@ Georgia,2020,67.06,Democratic
 Georgia,2024,68.26,Republican
 Hawaii,2008,48.79005886200131,Democratic
 Hawaii,2012,44.10955317840596,Democratic
-Hawaii,2016,42.330743442952176,Republican
+Hawaii,2016,42.330743442952176,Democratic
 Hawaii,2020,55.35,Democratic
 Hawaii,2024,50.27,Democratic
 Idaho,2008,63.636054524205285,Republican
@@ -66,7 +66,7 @@ Idaho,2020,64.94,Republican
 Idaho,2024,63.44,Republican
 Illinois,2008,63.58872669672567,Democratic
 Illinois,2012,58.80736030148059,Democratic
-Illinois,2016,62.071740568747934,Republican
+Illinois,2016,62.071740568747934,Democratic
 Illinois,2020,66.52,Democratic
 Illinois,2024,63.25,Democratic
 Indiana,2008,59.122756721186335,Democratic
@@ -96,17 +96,17 @@ Louisiana,2020,64.14,Republican
 Louisiana,2024,60.77,Republican
 Maine,2008,70.56413631766277,Democratic
 Maine,2012,68.27263102069105,Democratic
-Maine,2016,70.57433108253474,Republican
+Maine,2016,70.57433108253474,Democratic
 Maine,2020,74.87,Democratic
 Maine,2024,74.24,Democratic
 Maryland,2008,67.03005659203758,Democratic
 Maryland,2012,66.6435194359198,Democratic
-Maryland,2016,66.5051765774813,Republican
+Maryland,2016,66.5051765774813,Democratic
 Maryland,2020,69.45,Democratic
 Maryland,2024,69.3,Democratic
 Massachusetts,2008,66.80893721880912,Democratic
 Massachusetts,2012,65.66021036442231,Democratic
-Massachusetts,2016,67.04070493989404,Republican
+Massachusetts,2016,67.04070493989404,Democratic
 Massachusetts,2020,71.31,Democratic
 Massachusetts,2024,68.03,Democratic
 Michigan,2008,69.16844493570504,Democratic
@@ -116,7 +116,7 @@ Michigan,2020,73.27,Democratic
 Michigan,2024,74.64,Republican
 Minnesota,2008,77.80339409694143,Democratic
 Minnesota,2012,76.1275141130454,Democratic
-Minnesota,2016,74.0821158692711,Republican
+Minnesota,2016,74.0821158692711,Democratic
 Minnesota,2020,79.21,Democratic
 Minnesota,2024,76.35,Democratic
 Mississippi,2008,61.03125953719892,Republican
@@ -141,27 +141,27 @@ Nebraska,2020,69.06,Republican
 Nebraska,2024,67.96,Republican
 Nevada,2008,57.037183712148,Democratic
 Nevada,2012,56.5230975377886,Democratic
-Nevada,2016,57.75019602691419,Republican
+Nevada,2016,57.75019602691419,Democratic
 Nevada,2020,64.25,Democratic
 Nevada,2024,65.8,Republican
 New Hampshire,2008,71.63288561730305,Democratic
 New Hampshire,2012,69.97473527150972,Democratic
-New Hampshire,2016,70.96934752282941,Republican
+New Hampshire,2016,70.96934752282941,Democratic
 New Hampshire,2020,73.96,Democratic
 New Hampshire,2024,74.05,Democratic
 New Jersey,2008,66.98433791562638,Democratic
 New Jersey,2012,61.673261279668345,Democratic
-New Jersey,2016,64.98725097462945,Republican
+New Jersey,2016,64.98725097462945,Democratic
 New Jersey,2020,72.04,Democratic
 New Jersey,2024,67.24,Democratic
 New Mexico,2008,60.94513045648758,Democratic
 New Mexico,2012,54.470010661084544,Democratic
-New Mexico,2016,54.18786988976021,Republican
+New Mexico,2016,54.18786988976021,Democratic
 New Mexico,2020,60.49,Democratic
 New Mexico,2024,59.57,Democratic
 New York,2008,59.02037322315472,Democratic
 New York,2012,53.10772688002521,Democratic
-New York,2016,57.08621575564008,Republican
+New York,2016,57.08621575564008,Democratic
 New York,2020,61.71,Democratic
 New York,2024,60.44,Democratic
 North Carolina,2008,65.49576307818108,Democratic
@@ -186,7 +186,7 @@ Oklahoma,2020,54.43,Republican
 Oklahoma,2024,53.28,Republican
 Oregon,2008,67.67716036903828,Democratic
 Oregon,2012,63.17677931080262,Democratic
-Oregon,2016,66.37914936847577,Republican
+Oregon,2016,66.37914936847577,Democratic
 Oregon,2020,75.33,Democratic
 Oregon,2024,71.94,Democratic
 Pennsylvania,2008,63.55760037419829,Democratic
@@ -196,7 +196,7 @@ Pennsylvania,2020,69.93,Democratic
 Pennsylvania,2024,71.43,Republican
 Rhode Island,2008,61.75464960415532,Democratic
 Rhode Island,2012,57.774102171212746,Democratic
-Rhode Island,2016,59.08567820516737,Republican
+Rhode Island,2016,59.08567820516737,Democratic
 Rhode Island,2020,63.09,Democratic
 Rhode Island,2024,63.28,Democratic
 South Carolina,2008,58.04475168471491,Republican
@@ -226,17 +226,17 @@ Utah,2020,67.22,Republican
 Utah,2024,64.15,Republican
 Vermont,2008,67.3310437113419,Democratic
 Vermont,2012,60.73008400633091,Democratic
-Vermont,2016,63.681031938846864,Republican
+Vermont,2016,63.681031938846864,Democratic
 Vermont,2020,71.25,Democratic
 Vermont,2024,70.89,Democratic
 Virginia,2008,66.99711228961172,Democratic
 Virginia,2012,66.13705964552014,Democratic
-Virginia,2016,66.07366212487702,Republican
+Virginia,2016,66.07366212487702,Democratic
 Virginia,2020,71.79,Democratic
 Virginia,2024,71.19,Democratic
 Washington,2008,66.5980264964215,Democratic
 Washington,2012,64.84213391455488,Democratic
-Washington,2016,64.74055036374145,Republican
+Washington,2016,64.74055036374145,Democratic
 Washington,2020,75.33,Democratic
 Washington,2024,70.17,Democratic
 West Virginia,2008,49.877850789180386,Republican
