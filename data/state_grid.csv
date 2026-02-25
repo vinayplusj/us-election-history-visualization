@@ -1,0 +1,52 @@
+State,X,Y
+Washington,1,7
+Oregon,1,6
+California,1,5
+Idaho,2,6
+Nevada,2,5
+Arizona,2,4
+Utah,3,5
+Montana,3,7
+Wyoming,3,6
+Colorado,3,4
+New Mexico,3,3
+North Dakota,4,7
+South Dakota,4,6
+Nebraska,4,5
+Kansas,4,4
+Oklahoma,4,3
+Texas,4,2
+Minnesota,5,7
+Iowa,5,6
+Missouri,5,5
+Arkansas,5,4
+Louisiana,5,3
+Wisconsin,6,7
+Illinois,6,6
+Kentucky,6,5
+Tennessee,6,4
+Mississippi,6,3
+Michigan,7,7
+Indiana,7,6
+Ohio,7,5
+Alabama,7,3
+Georgia,8,3
+Florida,8,2
+West Virginia,8,5
+Virginia,9,5
+North Carolina,9,4
+South Carolina,9,3
+Pennsylvania,9,6
+New York,10,7
+Vermont,11,8
+New Hampshire,12,8
+Maine,13,8
+Massachusetts,12,7
+Rhode Island,13,7
+Connecticut,12,6
+New Jersey,11,6
+Delaware,12,5
+Maryland,11,5
+District of Columbia,12,4
+Alaska,1,2
+Hawaii,2,2
