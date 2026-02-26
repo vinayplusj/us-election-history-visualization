@@ -750,7 +750,7 @@ def load_state_winners_from_nara(force_refresh: bool = False) -> pd.DataFrame:
                 # Use year hints by candidate surname tokens
                 if ticket_label == "Ticket_A_Total":
                     # President ticket (overall winner) name is not in table headers, so use year hint tokens.
-                    # For 2024, you explicitly want correct parties; the year hint mapping covers Trump/Harris.
+                    # For 2024, the year hint mapping covers Trump/Harris.
                     if year in {2008, 2012, 2020}:
                         return "Democratic"
                     if year == 2016:
